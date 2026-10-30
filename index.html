@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#f7f7f2"><title>Мои билеты · Культура Урала</title><style>
+:root{color-scheme:light;--ink:#20392d;--green:#315b43;--muted:#647267;--paper:#f7f7f2;--line:#dce1d8;--white:#fff;--error:#9a3425;font-family:Inter,"Segoe UI",Arial,sans-serif;font-synthesis:none}
+#results{max-height:330px;overflow-y:auto;margin-bottom:16px}#results .event-option{padding:12px;margin:5px 0;min-height:58px}#results .event-option strong{font-size:18px}.event-option[aria-selected=true]{outline:2px solid #779b65;outline-offset:-2px;background:#f0f5eb}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.5}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:wait;opacity:.55}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #779b65;outline-offset:3px}button{transition:background .15s,color .15s}a{color:var(--green)}[hidden]{display:none!important}.app{max-width:680px;min-height:100vh;margin:auto;padding:0 24px 124px}.brand{display:flex;align-items:center;gap:12px;padding:28px 0 24px;border-bottom:1px solid var(--line)}.brand-mark{width:42px;height:42px;background:var(--green);color:#fff;display:grid;place-items:center;border-radius:50%;font-family:Georgia,serif;font-size:17px;letter-spacing:-1px}.brand-name{display:block;font-family:Georgia,serif;font-size:20px}.eyebrow{display:block;font-size:11px;letter-spacing:.13em;font-weight:600;color:var(--muted)}.brand .eyebrow{letter-spacing:.04em;font-size:10px}.region{margin-left:auto;font-family:Georgia,serif;color:#9da790;font-size:28px}.notice{margin-top:16px;padding:12px 14px;background:#eaf0e4;border-radius:12px;font-size:13px}.notice:empty{display:none}.notice.preview{background:#fff3d8;color:#785d22}.intro{padding:34px 0 22px}.intro h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(30px,6.5vw,41px);font-weight:400;line-height:1.15;letter-spacing:-.035em;margin:14px 0 18px}.intro em{font-weight:400;color:#648457}.intro p{color:var(--muted);margin:0;font-size:15px;line-height:1.65}.card{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:22px;margin:0 0 18px}.card>label,#manual-fields>label{display:block;font-size:14px;font-weight:600;margin:0 0 10px}input[type=text],input[type=datetime-local],select{display:block;width:100%;min-width:0;min-height:52px;border:1px solid #cbd4c7;border-radius:10px;padding:13px 12px;background:#fff;color:var(--ink);font-size:16px;line-height:1.3}input::placeholder{color:#7e877d;font-size:14px}#manual-fields>label:not(:first-child){margin-top:18px}.hint{font-size:12px;line-height:1.6;color:var(--muted);margin:10px 0 18px}.primary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:14px 17px;width:100%;border:none;border-radius:11px;background:var(--green);color:white;font-size:14px;font-weight:600;text-align:left}.primary:hover{background:#244a34}.primary>span{font-size:20px;font-weight:400;line-height:1}.text-button{border:none;background:none;color:var(--green);padding:12px 4px;font-size:13px;min-height:44px;text-decoration:underline;text-underline-offset:3px}#manual-toggle{display:block;margin:6px auto -6px}.section-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.step{font-size:11px;letter-spacing:.12em;color:var(--muted)}h2{font-family:Georgia,serif;font-weight:400;font-size:25px;line-height:1.25;letter-spacing:-.02em;margin:8px 0 22px;overflow-wrap:anywhere}fieldset{border:none;padding:0;margin:24px 0}legend{font-size:15px;font-weight:600}.reminder-group>.hint{margin:4px 0 13px}.offsets{display:grid;grid-template-columns:1fr;gap:9px}.offset{position:relative;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:11px;min-height:62px;padding:12px 14px;cursor:pointer}.offset:has(input:checked){background:#f0f5eb;border-color:#a9c098}.offset input{width:19px;height:19px;accent-color:var(--green);flex-shrink:0}.offset strong{font-size:14px;font-weight:600;display:block}.offset small{display:block;font-size:11px;color:var(--muted)}.offset:has(input:disabled){opacity:.5;cursor:default}.fine-print{font-size:11px;text-align:center;color:var(--muted);margin:12px 0 0}.how-it-works{display:flex;gap:13px;align-items:center;padding:6px 12px 14px}.mini-icon{display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;border:1px solid var(--line);border-radius:50%;font-size:22px;color:#71885d}.how-it-works p{font-size:12px;color:var(--ink)}.how-it-works p span{font-size:11px;color:var(--muted)}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(680px,100%);display:grid;grid-template-columns:1fr 1fr;background:rgba(247,247,242,.97);border-top:1px solid var(--line);padding:10px 16px max(12px,env(safe-area-inset-bottom));gap:8px;z-index:10}.bottom-nav button{border:0;background:none;color:var(--muted);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;min-height:52px}.bottom-nav button>span{font-size:23px;font-weight:300}.bottom-nav button[aria-current=page]{background:#e8eee1;color:var(--green);font-weight:600}.bottom-nav small{font-size:10px}.feedback{background:#e9f0e1;border:1px solid #b6c8a6;border-radius:12px;padding:14px 16px;margin:16px 0;font-size:14px;overflow-wrap:anywhere}.feedback.error{color:var(--error);background:#fff3ef;border-color:#e6c0b7}.results-title{font-size:12px;color:var(--muted);margin:23px 0 10px}.event-option{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:17px;margin:9px 0;color:var(--ink);min-height:64px}.event-option strong{display:block;font-family:Georgia,serif;font-size:20px;font-weight:400;line-height:1.3}.event-option small{display:block;font-size:12px;color:var(--muted);margin-top:7px}.event-option:hover{border-color:#8ba87a}.empty{padding:34px 20px;text-align:center;border:1px dashed #cdd6c8;border-radius:20px;margin:8px 0 24px}.empty .empty-icon{font-family:Georgia,serif;font-size:42px;color:#91a47e}.empty h2{margin:12px 0;font-size:24px}.empty p{font-size:13px;line-height:1.6;color:var(--muted)}.ticket{position:relative;padding-top:20px}.ticket:before{content:'';display:block;width:38px;height:4px;border-radius:4px;background:#b5c99d;margin-bottom:15px}.ticket time{display:block;color:var(--muted);font-size:12px;margin:0 0 9px}.ticket h2{margin:0 0 12px;font-size:25px}.ticket .ticket-alert{font-size:12px;color:var(--green);margin:12px 0}.ticket-actions{display:flex;gap:18px;flex-wrap:wrap;border-top:1px dashed var(--line);margin-top:16px;padding-top:2px}.ticket-actions button{font-size:12px}.ticket-actions .remove{color:#947567}.ticket a{font-size:12px;overflow-wrap:anywhere}.dot{color:#9caf87}.compact{padding-bottom:25px}#tickets-view>.primary{margin-top:20px}#results{scroll-margin-top:20px}#ticket-form{scroll-margin-top:20px}
+@media(min-width:600px){.app{padding-inline:44px}.brand{padding-block:32px}.intro{padding-top:48px}.card{padding:28px}.offsets{grid-template-columns:1fr 1fr 1fr}.offset{padding:14px 10px;gap:8px;align-items:flex-start}.offset small{font-size:10px}.bottom-nav{padding-inline:44px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+</style><script defer src="https://st.max.ru/js/max-web-app.js"></script><script>
+const $=id=>document.getElementById(id);
+const state={token:null,selected:null,editing:null,manual:false,tickets:[],link:''};
+let searchTimer,searchVersion=0,activeOption=-1,suggestions=[];
+const when=value=>new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Yekaterinburg',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(value);
+function element(tag,text,className){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;}
+function feedback(text,isError=false){const node=$('feedback');node.textContent=text;node.classList.toggle('error',isError);node.hidden=!text;if(isError)node.focus();}
+async function api(path,body,method){
+  if(!state.token&&!['/auth','/search'].includes(path))throw new Error('Откройте мини-приложение в MAX, чтобы сохранить свой билет.');
+  let response;try{response=await fetch('/mini/v1'+path,{method:method||(body===undefined?'GET':'POST'),headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});}catch{throw new Error('Нет связи с сервисом. Проверьте интернет и повторите.');}
+  const value=await response.json();if(!response.ok)throw new Error(value.error||'Не удалось выполнить запрос');return value;
+}
+function view(name){$('add-view').hidden=name!=='add';$('tickets-view').hidden=name!=='tickets';$('nav-add').toggleAttribute('aria-current',name==='add');$('nav-tickets').toggleAttribute('aria-current',name==='tickets');if(name==='add')$('nav-add').setAttribute('aria-current','page');else $('nav-tickets').setAttribute('aria-current','page');feedback('');window.scrollTo({top:0,behavior:'instant'});}
+async function action(button,fn){button.disabled=true;try{await fn();}catch(error){feedback(error.message,true);}finally{button.disabled=false;}}
+function syncOffsets(){
+  const at=state.manual?Date.parse($('manual-date').value+'+05:00'):Number($('session').value);
+  let unavailable=0;
+  for(const input of document.querySelectorAll('input[name=hours]')){input.disabled=Number.isFinite(at)&&at-Number(input.value)*3600000<=Date.now();if(input.disabled){input.checked=false;unavailable++;}}
+  $('offset-note').textContent=unavailable?'Варианты, время которых уже прошло, недоступны.':'';
+}
+function openTicket(event=null,ticket=null){
+  resetSearch();
+  feedback('');state.selected=event;state.editing=ticket?.id||null;state.manual=!event;state.link=ticket?.link||'';
+  $('ticket-form').hidden=false;$('manual-fields').hidden=Boolean(event);$('sessions-field').hidden=!event;$('results').replaceChildren();
+  $('selected-title').textContent=event?.title||ticket?.title||'Добавить вручную';$('manual-title').value=ticket?.title||(!/^https?:\/\//i.test($('query').value)?$('query').value:'');
+  $('manual-date').value=ticket?new Date(ticket.eventAt+5*3600000).toISOString().slice(0,16):'';
+  $('manual-title').required=!event;$('manual-date').required=!event;
+  $('session').replaceChildren();for(const at of event?.sessions||[]){const option=element('option',when(at));option.value=at;$('session').append(option);}
+  if(ticket&&event)$('session').value=ticket.eventAt;
+  for(const input of document.querySelectorAll('input[name=hours]'))input.checked=(ticket?.hours||[2]).includes(Number(input.value));
+  $('save').firstChild.textContent=ticket?'Сохранить напоминания ':'Билет куплен — сохранить ';
+  $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function loadTickets(){state.tickets=await api('/tickets');$('ticket-count').textContent=state.tickets.length||'';renderTickets();}
+function renderTickets(){
+  const list=$('tickets-list');list.replaceChildren();
+  if(!state.tickets.length){const empty=element('div',undefined,'empty');empty.append(element('div','▤','empty-icon'),element('h2','Планы ещё впереди'),element('p','Добавьте мероприятие, на которое купили билет. Оно появится здесь вместе с напоминаниями.'));list.append(empty);return;}
+  for(const ticket of state.tickets){
+    const card=element('article',undefined,'card ticket'),date=element('time',when(ticket.eventAt));date.dateTime=new Date(ticket.eventAt).toISOString();card.append(date,element('h2',ticket.title));
+    const past=ticket.eventAt<=Date.now();card.append(element('p',past?'Событие уже состоялось':ticket.hours.length?'Напомнить: '+ticket.hours.map(h=>h===24?'за сутки':h===1?'за час':'за 2 часа').join(', '):'Напоминания выключены','ticket-alert'));
+    if(ticket.link){const a=element('a','Открыть страницу события ↗');a.href=ticket.link;a.target='_blank';a.rel='noopener noreferrer';card.append(a);}
+    const actions=element('div',undefined,'ticket-actions');
+    if(!past){const edit=element('button','Изменить напоминания','text-button');edit.type='button';edit.addEventListener('click',()=>{view('add');openTicket(null,ticket);});actions.append(edit);}
+    const remove=element('button','Убрать билет','text-button remove');remove.type='button';remove.addEventListener('click',()=>action(remove,async()=>{await api('/tickets/'+ticket.id,undefined,'DELETE');await loadTickets();feedback('Билет убран. Оставшиеся напоминания отменены.');}));actions.append(remove);card.append(actions);list.append(card);
+  }
+}
+function resetSearch(){
+  clearTimeout(searchTimer);searchVersion++;suggestions=[];activeOption=-1;
+  $('results').replaceChildren();$('results').hidden=true;$('search-status').hidden=true;
+  $('query').setAttribute('aria-expanded','false');$('query').removeAttribute('aria-activedescendant');
+}
+function selectSuggestion(item){$('query').value=item.title;openTicket(item);$('session').focus();}
+async function searchEvents(selectSingle=false){
+  clearTimeout(searchTimer);const version=++searchVersion,query=$('query').value.trim();
+  if(query.length<2){resetSearch();return;}
+  $('search-status').textContent='Ищем события…';$('search-status').hidden=false;
+  try{
+    const result=await api('/search',{query});if(version!==searchVersion||query!==$('query').value.trim())return;
+    suggestions=result.events;activeOption=-1;$('results').replaceChildren();$('query').removeAttribute('aria-activedescendant');
+    if(selectSingle&&suggestions.length===1){selectSuggestion(suggestions[0]);return;}
+    if(selectSingle&&!suggestions.length){openTicket();state.link=/^https:\/\//i.test(query)?query:'';feedback('Не нашли точный сеанс. Укажите название и дату вашего билета.');return;}
+    $('search-status').textContent=suggestions.length?`Найдено: ${suggestions.length}. Выберите своё мероприятие.`:'В каталоге нет будущих сеансов по этому названию. Можно указать событие вручную.';
+    $('results').hidden=!suggestions.length;$('query').setAttribute('aria-expanded',String(Boolean(suggestions.length)));
+    for(const item of suggestions){
+      const b=element('button',undefined,'event-option');b.type='button';b.id=`event-option-${item.id}`;b.tabIndex=-1;b.setAttribute('role','option');b.setAttribute('aria-selected','false');
+      b.append(element('strong',item.title),element('small',when(item.sessions[0])+' · сеансов: '+item.sessions.length));b.addEventListener('click',()=>selectSuggestion(item));$('results').append(b);
+    }
+  }catch(error){if(version===searchVersion){resetSearch();$('search-status').textContent=error.message;$('search-status').hidden=false;}}
+}
+$('query').addEventListener('input',event=>{
+  resetSearch();feedback('');$('ticket-form').hidden=true;
+  if(!event.isComposing&&$('query').value.trim().length>=2)searchTimer=setTimeout(()=>void searchEvents(),250);
+});
+$('query').addEventListener('compositionend',()=>{resetSearch();if($('query').value.trim().length>=2)searchTimer=setTimeout(()=>void searchEvents(),250);});
+$('query').addEventListener('keydown',event=>{
+  if(event.isComposing)return;
+  if(event.key==='Escape'){resetSearch();return;}
+  if(!suggestions.length)return;
+  if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+    event.preventDefault();activeOption=event.key==='ArrowDown'?(activeOption+1)%suggestions.length:activeOption<0?suggestions.length-1:(activeOption-1+suggestions.length)%suggestions.length;
+    [...$('results').children].forEach((node,index)=>node.setAttribute('aria-selected',String(index===activeOption)));
+    const node=$('results').children[activeOption];$('query').setAttribute('aria-activedescendant',node.id);node.scrollIntoView({block:'nearest'});
+  }else if(event.key==='Enter'&&activeOption>=0){event.preventDefault();selectSuggestion(suggestions[activeOption]);}
+});
+$('search-form').addEventListener('submit',event=>{event.preventDefault();if(!event.isComposing){feedback('');action($('find'),()=>searchEvents(true));}});
+$('ticket-form').addEventListener('submit',event=>{
+  event.preventDefault();action($('save'),async()=>{
+    const hours=[...document.querySelectorAll('input[name=hours]:checked:not(:disabled)')].map(input=>Number(input.value));
+    const value={hours,...(state.editing?{id:state.editing}:{})};
+    if(state.manual){value.title=$('manual-title').value.trim();value.eventAt=Date.parse($('manual-date').value+'+05:00');value.link=state.link;}
+    else{value.eventId=state.selected.id;value.eventAt=Number($('session').value);}
+    await api('/tickets',value);await loadTickets();view('tickets');feedback('Билет сохранён. '+(hours.length?'Напоминания придут в чат с ботом.':'Вы можете включить напоминания позже.'));
+    $('ticket-form').hidden=true;state.editing=null;
+  });
+});
+$('manual-toggle').addEventListener('click',()=>{openTicket();state.link=/^https:\/\//i.test($('query').value)?$('query').value.trim():'';});
+$('back-to-search').addEventListener('click',()=>{$('ticket-form').hidden=true;state.editing=null;$('query').focus();$('manual-toggle').setAttribute('aria-expanded','false');});
+$('session').addEventListener('change',syncOffsets);$('manual-date').addEventListener('change',syncOffsets);
+$('nav-add').addEventListener('click',()=>view('add'));$('add-another').addEventListener('click',()=>{view('add');$('query').focus();});
+$('nav-tickets').addEventListener('click',()=>action($('nav-tickets'),async()=>{view('tickets');await loadTickets();}));
+async function start(){
+  if(window.WebApp?.ready){try{window.WebApp.ready();}catch{}}
+  const initData=window.WebApp?.initData;
+  if(!initData){$('access').textContent='Поиск событий работает без входа. Для сохранения личных билетов откройте приложение в MAX.';$('access').classList.add('preview');return;}
+  try{const session=await api('/auth',{initData});state.token=session.token;$('access').hidden=true;$('start-notice').hidden=!session.needsStart;await loadTickets();}
+  catch(error){$('access').textContent=error.message;$('access').classList.add('preview');}
+}
+void start();
+
+</script></head>
+<body>
+  <div class="app">
+    <header class="brand"><span class="brand-mark" aria-hidden="true">КУ</span><div><span class="brand-name">Культура Урала</span><span class="eyebrow">Афиша Южного Урала</span></div><span class="region">74</span></header>
+    <div id="access" class="notice" role="status">Подключаемся к MAX…</div>
+    <div id="start-notice" class="notice" hidden>Чтобы получать напоминания, нажмите «Начать» в <a href="https://max.ru/culture_ural_bot" target="_blank" rel="noopener noreferrer">чате с ботом</a>. Затем вернитесь сюда.</div>
+    <main>
+      <section id="add-view" aria-labelledby="add-title">
+        <div class="intro"><span class="eyebrow">ПЛАНЫ НА КУЛЬТУРУ</span><h1 id="add-title">Впечатления — вам.<br><em>Напоминания — нам.</em></h1><p>Отметьте купленный билет.<br>Бот напомнит, когда пора собираться.</p></div>
+        <form id="search-form" method="post" action="/mini/v1/search" class="card">
+          <label for="query">На какое событие куплен билет?</label>
+          <div class="input-wrap"><input id="query" name="query" type="text" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="false" required minlength="2" maxlength="500" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Название или ссылка на мероприятие" aria-describedby="query-help"></div>
+          <p id="query-help" class="hint">Введите от двух букв — предложим события. Можно вставить ссылку с Культуры Урала.</p>
+          <p id="search-status" class="hint" role="status" hidden></p>
+          <div id="results" role="listbox" aria-label="Варианты мероприятий" hidden></div>
+          <button id="find" class="primary" type="submit">Найти мероприятие <span aria-hidden="true">↗</span></button>
+          <button id="manual-toggle" class="text-button" type="button" aria-controls="ticket-form" aria-expanded="false">Указать событие вручную</button>
+        </form>
+        <form id="ticket-form" method="post" action="/mini/v1/tickets" class="card" hidden>
+          <div class="section-heading"><span class="step">БИЛЕТ</span><button id="back-to-search" class="text-button" type="button">Изменить событие</button></div>
+          <h2 id="selected-title">Ваше мероприятие</h2>
+          <div id="manual-fields" hidden><label for="manual-title">Название мероприятия</label><input id="manual-title" name="title" maxlength="300" type="text" autocomplete="off"><label for="manual-date">Дата и время начала</label><input id="manual-date" name="date" type="datetime-local" step="60"><p class="hint">Выберите дату ваше��о сеанса.</p></div>
+          <div id="sessions-field"><label for="session">Дата и время сеанса</label><select id="session" name="session"></select></div>
+          <fieldset class="reminder-group"><legend>Когда напомнить?</legend><p class="hint">Можно выбрать несколько вариантов.</p><div class="offsets">
+            <label class="offset"><input type="checkbox" name="hours" value="1"><span><strong>За час</strong><small>60 минут до начала</small></span></label>
+            <label class="offset"><input type="checkbox" name="hours" value="2" checked><span><strong>За 2 часа</strong><small>Время собираться</small></span></label>
+            <label class="offset"><input type="checkbox" name="hours" value="24"><span><strong>За сутки</strong><small>Спланировать день</small></span></label>
+          </div><p id="offset-note" class="hint"></p></fieldset>
+          <button id="save" type="submit" class="primary">Билет куплен — сохранить <span aria-hidden="true">✓</span></button><p class="fine-print">Покупку отмечаете вы. Бот не проверяет оплату.</p>
+        </form>
+        <aside class="how-it-works"><span class="mini-icon" aria-hidden="true">✦</span><p>Спокойно планируйте вечер.<br><span>Напоминание придёт сообщением в MAX.</span></p></aside>
+      </section>
+      <section id="tickets-view" aria-labelledby="tickets-title" hidden><div class="intro compact"><span class="eyebrow">ВАШИ ПЛАНЫ</span><h1 id="tickets-title">Мои билеты<span class="dot">.</span></h1><p>События, которые вы сохранили,<br>и напоминания к ним.</p></div><div id="tickets-list" aria-live="polite"></div><button id="add-another" class="primary" type="button">Добавить билет <span aria-hidden="true">＋</span></button></section>
+      <div id="feedback" class="feedback" role="status" aria-live="polite" tabindex="-1" hidden></div>
+    </main>
+    <footer class="bottom-nav" aria-label="Разделы"><button type="button" id="nav-add" aria-current="page"><span aria-hidden="true">＋</span>Добавить билет</button><button type="button" id="nav-tickets"><span aria-hidden="true">▤</span>Мои билеты <small id="ticket-count"></small></button></footer>
+  </div>
+</body></html>
