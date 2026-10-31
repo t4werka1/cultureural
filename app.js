@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const state={token:null,selected:null,editing:null,manual:false,manualAt:null,manualDate:'',tickets:[],boughtTickets:[],venues:[],favorites:[],link:''};
-const staticPreview=location.hostname.endsWith('.github.io');let previewData;
+const hostedOnPages=location.hostname.endsWith('.github.io');let staticPreview=hostedOnPages,apiBase='',previewData;
 let venueBusy=false;
 const normalizeText=value=>String(value||'').toLowerCase().replaceAll('ё','е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const when=value=>new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Yekaterinburg',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(value);
@@ -20,7 +20,7 @@ async function api(path,body,method){
     return{events:previewData.events.filter(row=>isLink?row.link.replace('://www.', '://')===query.replace('://www.', '://').replace(/\/$/,''):words.every(word=>normalizeText(row.title).includes(word))).map(row=>({...row,sessions:row.sessions.filter(at=>at>Date.now())})).filter(row=>row.sessions.length).slice(0,20)};
   }
   if(!state.token&&!(path==='/auth'||path==='/search'||route.pathname==='/venues'&&body===undefined))throw new Error('Откройте приложение в MAX, чтобы сохранять билеты и любимые площадки.');
-  let response;try{response=await fetch('/mini/v1'+path,{method:method||(body===undefined?'GET':'POST'),headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});}catch{throw new Error('Нет связи с сервисом. Проверьте интернет и повторите.');}
+  let response;try{response=await fetch(apiBase+'/mini/v1'+path,{method:method||(body===undefined?'GET':'POST'),headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});}catch{throw new Error('Нет связи с сервисом. Проверьте интернет и повторите.');}
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw new Error('Сервис бота ещё не подключён к этой странице. Личные уведомления пока недоступны.');
   const value=await response.json();if(!response.ok)throw new Error(value.error||'Не удалось выполнить запрос');return value;
 }
@@ -156,6 +156,19 @@ $('nav-bought').addEventListener('click',()=>action($('nav-bought'),async()=>{vi
 $('nav-venues').addEventListener('click',()=>action($('nav-venues'),showVenues));
 $('choose-venues').addEventListener('click',()=>action($('choose-venues'),showVenues));
 async function start(){
+  if(hostedOnPages){
+    try{
+      const response=await fetch('./connection.json',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+      if(response.status===404)return;
+      if(!response.ok)throw new Error('Не удалось загрузить подключение к сервису');
+      const config=await response.json();
+      if(config.apiBase){
+        const url=new URL(config.apiBase);
+        if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new Error('Неверный адрес сервиса');
+        apiBase=url.origin;staticPreview=false;
+      }
+    }catch(error){feedback(error.message||'Не удалось подключить сервис',true);return;}
+  }
   if(staticPreview)return;
   if(window.WebApp?.ready){try{window.WebApp.ready();}catch{}}
   const initData=window.WebApp?.initData;
