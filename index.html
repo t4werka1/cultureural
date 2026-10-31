@@ -10,7 +10,7 @@
 <body>
   <div class="app">
     <header class="brand"><a class="brand-name" href="./" aria-label="Культура Урала — главная">КУЛЬТУРА<br>УРАЛА<span class="brand-dot">.</span></a><div class="capital-label">ЧЕЛЯБИНСК<br>КУЛЬТУРНАЯ СТОЛИЦА <strong>2027</strong></div></header>
-    <div id="access" class="notice" role="status">Подключаемся к MAX…</div>
+    <div id="access" class="notice" role="status" hidden></div>
     <div id="start-notice" class="notice" hidden>Чтобы получать напоминания, нажмите «Начать» в <a href="https://max.ru/culture_ural_bot" target="_blank" rel="noopener noreferrer">чате с ботом</a>. Затем вернитесь сюда.</div>
     <main>
       <section id="add-view" aria-labelledby="add-title">
@@ -39,8 +39,9 @@
         <aside class="how-it-works"><span class="mini-icon" aria-hidden="true">✦</span><p>Спокойно планируйте вечер.<br><span>Напоминание придёт сообщением в MAX.</span></p></aside>
       </section>
       <section id="tickets-view" aria-labelledby="tickets-title" hidden><div class="intro compact"><span class="eyebrow">ВСЁ, ЧТО ВАМ ИНТЕРЕСНО</span><h1 id="tickets-title">МОИ СОБЫТИЯ<span class="dot">.</span></h1><p>Анонсы любимых площадок и напоминания о купленных билетах — в одном месте.</p></div><div class="feed-legend"><span>● Билеты и напоминания</span><span>♡ События площадок</span></div><div id="tickets-list" aria-live="polite"></div><button id="add-another" class="primary" type="button">Добавить билет <span aria-hidden="true">＋</span></button><button id="choose-venues" class="secondary" type="button">Выбрать любимые площадки <span aria-hidden="true">♡</span></button></section>
+      <section id="bought-view" aria-labelledby="bought-title" hidden><div class="intro compact"><span class="eyebrow">КУПЛЕНО И ЗАПЛАНИРОВАНО</span><h1 id="bought-title">МОИ БИЛЕТЫ<span class="dot">.</span></h1><p>Ваши купленные билеты и время, за которое бот напомнит о событии.</p></div><div id="bought-list" aria-live="polite"></div></section>
       <section id="venues-view" aria-labelledby="venues-title" hidden>
-        <div class="intro compact"><span class="eyebrow">ВАШИ ТОЧКИ ПРИТЯЖЕНИЯ</span><h1 id="venues-title">ЛЮБИМЫЕ<br>ПЛОЩАДКИ<span class="dot">.</span></h1><p>Найдите любую площадку из каталога Культуры Урала. Её новые события появятся в «Моих событиях», а анонсы придут в чат с ботом.</p></div>
+        <div class="intro compact"><span class="eyebrow">ВАШИ ТОЧКИ ПРИТЯЖЕНИЯ</span><h1 id="venues-title">ПЛОЩАДКИ<span class="dot">.</span></h1><p>Найдите площадку и добавьте в любимые. Её события появятся в «Моих событиях», а анонсы придут в чат с ботом.</p></div>
         <form id="venue-search-form" class="card" method="get" action="/mini/v1/venues">
           <label for="venue-query">Какую площадку найти?</label>
           <input id="venue-query" name="query" type="text" role="combobox" aria-autocomplete="list" aria-controls="venue-results" aria-expanded="false" aria-describedby="venue-help" required minlength="2" maxlength="200" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Название площадки или город">
@@ -49,10 +50,10 @@
           <div id="venue-results" role="listbox" aria-label="Варианты площадок" hidden></div>
           <button id="venue-find" class="primary" type="submit">Найти площадку <span aria-hidden="true">↗</span></button>
         </form>
-        <div class="venue-summary"><span id="venue-count">Выбрано: 0</span><span>Избранные площадки</span></div><div id="venues-list"></div>
+        <section aria-labelledby="favorite-venues-title"><div class="venue-summary"><h2 id="favorite-venues-title" class="venue-list-title">Любимые площадки</h2><span id="venue-count">Выбрано: 0</span></div><div id="venues-list"></div></section>
       </section>
       <div id="feedback" class="feedback" role="status" aria-live="polite" tabindex="-1" hidden></div>
     </main>
-    <nav class="bottom-nav" aria-label="Разделы"><button type="button" id="nav-add" aria-current="page"><span aria-hidden="true">＋</span>Добавить билет</button><button type="button" id="nav-tickets" aria-label="Мои события"><span aria-hidden="true">▤</span>Мои события <small id="ticket-count"></small></button><button type="button" id="nav-venues"><span aria-hidden="true">♡</span>Площадки</button></nav>
+    <nav class="bottom-nav" aria-label="Разделы"><button type="button" id="nav-add" aria-current="page"><span aria-hidden="true">＋</span>Добавить билет</button><button type="button" id="nav-tickets" aria-label="Мои события"><span aria-hidden="true">▤</span>Мои события <small id="ticket-count"></small></button><button type="button" id="nav-bought"><span aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6V5Z"/><path d="M15 6v12" stroke-dasharray="2 2"/></svg></span>Мои билеты</button><button type="button" id="nav-venues"><span aria-hidden="true">♡</span>Площадки</button></nav>
   </div>
 </body></html>
