@@ -39,7 +39,18 @@
         <aside class="how-it-works"><span class="mini-icon" aria-hidden="true">✦</span><p>Спокойно планируйте вечер.<br><span>Напоминание придёт сообщением в MAX.</span></p></aside>
       </section>
       <section id="tickets-view" aria-labelledby="tickets-title" hidden><div class="intro compact"><span class="eyebrow">ВСЁ, ЧТО ВАМ ИНТЕРЕСНО</span><h1 id="tickets-title">МОИ СОБЫТИЯ<span class="dot">.</span></h1><p>Анонсы любимых площадок и напоминания о купленных билетах — в одном месте.</p></div><div class="feed-legend"><span>● Билеты и напоминания</span><span>♡ События площадок</span></div><div id="tickets-list" aria-live="polite"></div><button id="add-another" class="primary" type="button">Добавить билет <span aria-hidden="true">＋</span></button><button id="choose-venues" class="secondary" type="button">Выбрать любимые площадки <span aria-hidden="true">♡</span></button></section>
-      <section id="venues-view" aria-labelledby="venues-title" hidden><div class="intro compact"><span class="eyebrow">ВАШИ ТОЧКИ ПРИТЯЖЕНИЯ</span><h1 id="venues-title">ЛЮБИМЫЕ<br>ПЛОЩАДКИ<span class="dot">.</span></h1><p>Выберите, куда любите ходить. Новые события появятся в «Моих событиях», а анонсы придут в чат с ботом.</p></div><div class="venue-summary"><span id="venue-count">Выбрано: 0</span><span>Челябинская область</span></div><div id="venues-list"></div></section>
+      <section id="venues-view" aria-labelledby="venues-title" hidden>
+        <div class="intro compact"><span class="eyebrow">ВАШИ ТОЧКИ ПРИТЯЖЕНИЯ</span><h1 id="venues-title">ЛЮБИМЫЕ<br>ПЛОЩАДКИ<span class="dot">.</span></h1><p>Найдите любую площадку из каталога Культуры Урала. Её новые события появятся в «Моих событиях», а анонсы придут в чат с ботом.</p></div>
+        <form id="venue-search-form" class="card" method="get" action="/mini/v1/venues">
+          <label for="venue-query">Какую площадку найти?</label>
+          <input id="venue-query" name="query" type="text" role="combobox" aria-autocomplete="list" aria-controls="venue-results" aria-expanded="false" aria-describedby="venue-help" required minlength="2" maxlength="200" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Название площадки или город">
+          <p id="venue-help" class="hint">Введите от двух букв — предложим площадки с указанием города.</p>
+          <p id="venue-status" class="hint" role="status" hidden></p>
+          <div id="venue-results" role="listbox" aria-label="Варианты площадок" hidden></div>
+          <button id="venue-find" class="primary" type="submit">Найти площадку <span aria-hidden="true">↗</span></button>
+        </form>
+        <div class="venue-summary"><span id="venue-count">Выбрано: 0</span><span>Избранные площадки</span></div><div id="venues-list"></div>
+      </section>
       <div id="feedback" class="feedback" role="status" aria-live="polite" tabindex="-1" hidden></div>
     </main>
     <nav class="bottom-nav" aria-label="Разделы"><button type="button" id="nav-add" aria-current="page"><span aria-hidden="true">＋</span>Добавить билет</button><button type="button" id="nav-tickets" aria-label="Мои события"><span aria-hidden="true">▤</span>Мои события <small id="ticket-count"></small></button><button type="button" id="nav-venues"><span aria-hidden="true">♡</span>Площадки</button></nav>
