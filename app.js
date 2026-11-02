@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const state={token:null,selected:null,editing:null,manual:false,manualAt:null,manualDate:'',tickets:[],boughtTickets:[],venues:[],favorites:[],link:''};
+const state={token:null,selected:null,editing:null,manual:false,manualAt:null,manualDate:'',tickets:[],venues:[],favorites:[],link:'',filter:'all'};
 const hostedOnPages=location.hostname.endsWith('.github.io');let staticPreview=hostedOnPages,apiBase='',previewData;
 let venueBusy=false;
 const normalizeText=value=>String(value||'').toLowerCase().replaceAll('ё','е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
@@ -24,7 +24,7 @@ async function api(path,body,method){
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw new Error('Сервис бота ещё не подключён к этой странице. Личные уведомления пока недоступны.');
   const value=await response.json();if(!response.ok)throw new Error(value.error||'Не удалось выполнить запрос');return value;
 }
-function view(name){for(const key of ['add','tickets','bought','venues']){$(key+'-view').hidden=key!==name;const nav=$('nav-'+key);nav.removeAttribute('aria-current');if(key===name)nav.setAttribute('aria-current','page');}feedback('');window.scrollTo({top:0,behavior:'instant'});}
+function view(name){for(const key of ['add','tickets','venues']){$(key+'-view').hidden=key!==name;const nav=$('nav-'+key);nav.removeAttribute('aria-current');if(key===name)nav.setAttribute('aria-current','page');}feedback('');window.scrollTo({top:0,behavior:'instant'});}
 async function action(button,fn){button.disabled=true;try{await fn();}catch(error){feedback(error.message,true);}finally{button.disabled=false;}}
 const manualTime=()=>state.manualAt&&$('manual-date').value===state.manualDate?state.manualAt:Date.parse($('manual-date').value+'+05:00');
 function syncOffsets(){
@@ -49,23 +49,27 @@ function openTicket(event=null,ticket=null){
 }
 async function loadTickets(){state.tickets=(await api('/my-events')).items;$('ticket-count').textContent=state.tickets.length||'';renderTickets();}
 const reminderText=hours=>hours.length?'Напоминания: '+hours.map(hour=>hour===24?'за сутки':hour===1?'за час':'за '+new Intl.NumberFormat('ru-RU',{style:'unit',unit:'hour',unitDisplay:'long'}).format(hour)).join(', '):'Напоминания выключены';
-async function loadBoughtTickets(){state.boughtTickets=await api('/tickets');renderBoughtTickets();}
-function renderBoughtTickets(){
-  const container=$('bought-list');container.replaceChildren();
-  if(!state.boughtTickets.length){const empty=element('div',undefined,'empty');empty.append(element('h2',state.token?'Пока нет купленных билетов':'Ваши билеты'),element('p',state.token?'Отметьте купленный билет в разделе «Добавить билет». Здесь появятся его дата и выбранные напоминания.':'Здесь будут ваши купленные билеты, даты событий и выбранные напоминания.'));container.append(empty);return;}
-  const list=element('ul',undefined,'bought-tickets');
-  for(const ticket of state.boughtTickets){
-    const row=element('li',undefined,'card ticket'),date=element('time',when(ticket.eventAt));date.dateTime=new Date(ticket.eventAt).toISOString();
-    row.append(date,element('h2',ticket.title),element('p',reminderText(ticket.hours),'ticket-alert'));
-    if(ticket.eventAt<=Date.now())row.append(element('p','Событие уже состоялось','hint'));
-    list.append(row);
-  }
-  container.append(list);
-}
 function renderTickets(){
   const list=$('tickets-list');list.replaceChildren();
-  if(!state.tickets.length){const empty=element('div',undefined,'empty');empty.append(element('div','✦','empty-icon'),element('h2','Всё начинается с интереса'),element('p',state.token?'Добавьте купленный билет или выберите любимые площадки. Ваши события появятся здесь.':'Откройте приложение в MAX: здесь будут ваши билеты и события любимых площадок.'));list.append(empty);return;}
-  for(const ticket of state.tickets){
+  const filter=state.filter||'all';
+  const items=state.tickets.filter(row=>{
+    if(filter==='tickets')return row.kind==='ticket';
+    if(filter==='venues')return row.kind!=='ticket';
+    return true;
+  });
+  if(!items.length){
+    const empty=element('div',undefined,'empty');
+    empty.append(element('div','✦','empty-icon'));
+    if(filter==='tickets'){
+      empty.append(element('h2',state.token?'Пока нет купленных билетов':'Ваши билеты'),element('p',state.token?'Отметьте купленный билет в разделе «Добавить билет». Здесь появятся его дата и выбранные напоминания.':'Здесь будут ваши купленные билеты, даты событий и выбранные напоминания.'));
+    }else if(filter==='venues'){
+      empty.append(element('h2','Нет событий любимых площадок'),element('p','Выберите интересные площадки в разделе «Площадки», чтобы видеть их сеансы здесь.'));
+    }else{
+      empty.append(element('h2','Всё начинается с интереса'),element('p',state.token?'Добавьте купленный билет или выберите любимые площадки. Ваши события появятся здесь.':'Откройте приложение в MAX: здесь будут ваши билеты и события любимых площадок.'));
+    }
+    list.append(empty);return;
+  }
+  for(const ticket of items){
     const isTicket=ticket.kind==='ticket',card=element('article',undefined,'card ticket'+(isTicket?'':' venue-event')),date=element('time',when(ticket.eventAt));date.dateTime=new Date(ticket.eventAt).toISOString();
     card.append(element('span',isTicket?'БИЛЕТ И НАПОМИНАНИЯ':'С ЛЮБИМОЙ ПЛОЩАДКИ','event-kind'),date,element('h2',ticket.title));
     if(ticket.venues?.length)card.append(element('p',ticket.venues.map(v=>v.title).join(' · '),'venue-caption'));
@@ -152,7 +156,17 @@ $('session').addEventListener('change',syncOffsets);$('manual-date').addEventLis
 $('nav-add').addEventListener('click',()=>view('add'));$('add-another').addEventListener('click',()=>{view('add');$('query').focus();});
 async function showVenues(){view('venues');await loadVenues();}
 $('nav-tickets').addEventListener('click',()=>action($('nav-tickets'),async()=>{view('tickets');if(state.token)await loadTickets();else renderTickets();}));
-$('nav-bought').addEventListener('click',()=>action($('nav-bought'),async()=>{view('bought');if(state.token)await loadBoughtTickets();else renderBoughtTickets();}));
+document.querySelectorAll('.filter-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    state.filter=btn.dataset.filter||'all';
+    document.querySelectorAll('.filter-tab').forEach(b=>{
+      const active=b===btn;
+      b.classList.toggle('active',active);
+      b.setAttribute('aria-selected',String(active));
+    });
+    renderTickets();
+  });
+});
 $('nav-venues').addEventListener('click',()=>action($('nav-venues'),showVenues));
 $('choose-venues').addEventListener('click',()=>action($('choose-venues'),showVenues));
 async function start(){
