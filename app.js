@@ -8,10 +8,10 @@ function element(tag,text,className){const node=document.createElement(tag);if(t
 function feedback(text,isError=false){const node=$('feedback');node.textContent=text;node.classList.toggle('error',isError);node.hidden=!text;if(isError)node.focus();}
 const localTicketsKey='cultureural_tickets_v1';
 const localFavsKey='cultureural_favorites_v1';
-async function api(path,body,method){
+async function api(path,body,method,isFallback=false){
   const m=(method||(body===undefined?'GET':'POST')).toUpperCase();
   const route=new URL(path,'http://mini.local');
-  if(staticPreview||!apiBase){
+  if(staticPreview||!apiBase||isFallback){
     if(!previewData){const response=await fetch('./preview.json');if(!response.ok)throw new Error('Каталог временно недоступен. Попробуйте позже.');previewData=await response.json();}
     if(route.pathname==='/venues'){
       const query=route.searchParams.get('query');
@@ -71,8 +71,7 @@ async function api(path,body,method){
     if(!response.ok){const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);}
     const value=await response.json();return value;
   }catch(err){
-    staticPreview=true;
-    return api(path,body,method);
+    return api(path,body,method,true);
   }
 }
 function view(name){for(const key of ['add','tickets','venues']){$(key+'-view').hidden=key!==name;const nav=$('nav-'+key);nav.removeAttribute('aria-current');if(key===name)nav.setAttribute('aria-current','page');}feedback('');window.scrollTo({top:0,behavior:'instant'});}
@@ -136,7 +135,14 @@ function renderTickets(){
 }
 async function loadVenues(){
   const catalog=await api('/venues');state.venues=catalog.venues;
-  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}renderVenues();
+  try{
+    const prefs=await api('/preferences');
+    state.favorites=prefs.favorites||prefs.venues||JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+    localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
+  }catch{
+    state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+  }
+  renderVenues();
 }
 function renderVenues(){
   $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;$('venues-list').replaceChildren();
@@ -155,13 +161,19 @@ function renderVenues(){
   });
 }
 async function setFavorite(id,enabled){
-  if(venueBusy)return;venueBusy=true;$('venue-query').disabled=true;$('venue-find').disabled=true;renderVenues();
+  if(venueBusy)return;venueBusy=true;$('venue-query').disabled=true;$('venue-find').disabled=true;
   try{
-    const res=await api('/venues',{id,enabled});
-    state.favorites=res.venues||res.favorites||[];
     let favs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
     if(enabled){if(!favs.includes(id))favs.push(id);}else{favs=favs.filter(x=>x!==id);}
     localStorage.setItem(localFavsKey,JSON.stringify(favs));
+    state.favorites=favs;renderVenues();
+    try{
+      const res=await api('/venues',{id,enabled});
+      if(res?.favorites||res?.venues){
+        state.favorites=res.favorites||res.venues;
+        localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
+      }
+    }catch{}
     if(enabled){$('venue-query').value='';venueSearch.reset();}
     feedback(enabled?'Площадка добавлена. Анонсы будут приходить в чат, события — в «Мои события».':'Подписка на площадку выключена. Купленные билеты сохранены.');
   }finally{venueBusy=false;$('venue-query').disabled=false;$('venue-find').disabled=false;renderVenues();}
@@ -234,7 +246,29 @@ document.querySelectorAll('.filter-tab').forEach(btn=>{
 });
 $('nav-venues').addEventListener('click',()=>action($('nav-venues'),showVenues));
 $('choose-venues').addEventListener('click',()=>action($('choose-venues'),showVenues));
+function getInitData(){
+  if(window.WebApp?.initData)return window.WebApp.initData;
+  if(window.Telegram?.WebApp?.initData)return window.Telegram.WebApp.initData;
+  if(window.Max?.WebApp?.initData)return window.Max.WebApp.initData;
+  if(window.MaxWebApp?.initData)return window.MaxWebApp.initData;
+  try{
+    const hash=new URLSearchParams(window.location.hash.replace(/^#/,''));
+    if(hash.get('tgWebAppData'))return hash.get('tgWebAppData');
+    if(hash.get('maxWebAppData'))return hash.get('maxWebAppData');
+    if(hash.get('initData'))return hash.get('initData');
+    const search=new URLSearchParams(window.location.search);
+    if(search.get('tgWebAppData'))return search.get('tgWebAppData');
+    if(search.get('maxWebAppData'))return search.get('maxWebAppData');
+    if(search.get('initData'))return search.get('initData');
+  }catch{}
+  return null;
+}
 async function start(){
+  for(const o of [window.WebApp, window.Telegram?.WebApp, window.Max?.WebApp, window.MaxWebApp]){
+    if(o?.ready){try{o.ready();}catch{}}
+  }
+  if(!window.WebApp&&window.Telegram?.WebApp)window.WebApp=window.Telegram.WebApp;
+  if(!window.WebApp&&window.Max?.WebApp)window.WebApp=window.Max.WebApp;
   if(hostedOnPages){
     try{
       const response=await fetch('./connection.json',{cache:'no-store',signal:AbortSignal.timeout(6000)});
@@ -249,9 +283,8 @@ async function start(){
       }
     }catch{}
   }
-  if(window.WebApp?.ready){try{window.WebApp.ready();}catch{}}
-  const initData=window.WebApp?.initData;
-  if(initData&&apiBase&&!staticPreview){
+  const initData=getInitData();
+  if(initData&&apiBase){
     try{
       const session=await api('/auth',{initData});
       state.token=session.token;
@@ -262,6 +295,12 @@ async function start(){
     }catch(error){$('access').textContent=error.message;$('access').hidden=false;}
   }
   await loadTickets();
-  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}
+  try{
+    const prefs=await api('/preferences');
+    state.favorites=prefs.favorites||prefs.venues||JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+    localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
+  }catch{
+    state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+  }
 }
 void start();
