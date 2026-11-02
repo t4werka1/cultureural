@@ -257,9 +257,11 @@ async function start(){
       state.token=session.token;
       $('access').hidden=true;
       $('start-notice').hidden=!session.needsStart;
+      const localFavs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+      for(const id of localFavs){try{await api('/venues',{id,enabled:true});}catch{}}
     }catch(error){$('access').textContent=error.message;$('access').hidden=false;}
   }
   await loadTickets();
-  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}
+  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}
 }
 void start();
