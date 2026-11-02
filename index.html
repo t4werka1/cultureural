@@ -14,7 +14,7 @@
     <div id="start-notice" class="notice" hidden>Чтобы получать напоминания, нажмите «Начать» в <a href="https://max.ru/culture_ural_bot" target="_blank" rel="noopener noreferrer">чате с ботом</a>. Затем вернитесь сюда.</div>
     <main>
       <section id="add-view" aria-labelledby="add-title">
-        <div class="intro hero"><span class="eyebrow">ВАШ КУЛЬТУРНЫЙ МАРШРУТ</span><h1 id="add-title">БОЛЬШЕ<br>ПЛАНОВ.<br><span>БЛИЖЕ<br>К КУЛЬТУРЕ.</span></h1><img class="culture-mark" src="./lizard-harp.svg" width="82" height="90" alt="Культура Урала"><p>Любимые места, новые впечатления<br>и напоминания о важных вечерах.</p></div>
+        <div class="intro hero"><span class="eyebrow">ВАШ КУЛЬТУРНЫЙ МАРШРУТ</span><h1 id="add-title">БОЛЬШЕ<br>ПЛАНОВ.<br><span>БЛИЖЕ<br>К КУЛЬТУРЕ.</span></h1><img class="culture-mark" src="./brand-k.png" width="359" height="327" alt=""><p>Любимые места, новые впечатления<br>и напоминания о важных вечерах.</p></div>
         <form id="search-form" method="post" action="/mini/v1/search" class="card">
           <label for="query">На какое событие куплен билет?</label>
           <div class="input-wrap"><input id="query" name="query" type="text" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="false" required minlength="2" maxlength="500" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Название или ссылка на мероприятие" aria-describedby="query-help"></div>
@@ -36,7 +36,7 @@
           </div><p id="offset-note" class="hint"></p></fieldset>
           <button id="save" type="submit" class="primary">Билет куплен — сохранить <span aria-hidden="true">✓</span></button><p class="fine-print">Покупку отмечаете вы. Бот не проверяет оплату.</p>
         </form>
-        <aside class="how-it-works"><span class="mini-icon" aria-hidden="true">✦</span><p>Спокойно планируйте вечер.<br><span>Напоминание придёт сообщением в MAX.</span></p></aside>
+        <aside class="how-it-works"><span class="mini-icon" aria-hidden="true"><img src="./lizard-harp.svg" width="28" height="30" alt=""></span><p>Спокойно планируйте вечер.<br><span>Напоминание придёт сообщением в MAX.</span></p></aside>
       </section>
       <section id="tickets-view" aria-labelledby="tickets-title" hidden><div class="intro compact"><span class="eyebrow">КУПЛЕНО И ЗАПЛАНИРОВАНО</span><h1 id="tickets-title">МОИ СОБЫТИЯ И БИЛЕТЫ<span class="dot">.</span></h1><p>Купленные билеты с напоминаниями и анонсы любимых площадок в одном месте.</p></div><div class="feed-filters" role="tablist" aria-label="Фильтр событий"><button type="button" class="filter-tab active" data-filter="all" role="tab" aria-selected="true">Все</button><button type="button" class="filter-tab" data-filter="tickets" role="tab" aria-selected="false">Мои билеты</button><button type="button" class="filter-tab" data-filter="venues" role="tab" aria-selected="false">С площадок</button></div><div class="feed-legend"><span>● Билеты и напоминания</span><span>♡ События площадок</span></div><div id="tickets-list" aria-live="polite"></div><button id="add-another" class="primary" type="button">Добавить билет <span aria-hidden="true">＋</span></button><button id="choose-venues" class="secondary" type="button">Выбрать любимые площадки <span aria-hidden="true">♡</span></button></section>
       <section id="venues-view" aria-labelledby="venues-title" hidden>

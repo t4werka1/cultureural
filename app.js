@@ -59,7 +59,10 @@ function renderTickets(){
   });
   if(!items.length){
     const empty=element('div',undefined,'empty');
-    empty.append(element('div','✦','empty-icon'));
+    const icon=element('div',undefined,'empty-icon');
+    const iconImg=element('img');iconImg.src='./lizard-harp.svg';iconImg.width=36;iconImg.height=40;iconImg.alt='';
+    icon.append(iconImg);
+    empty.append(icon);
     if(filter==='tickets'){
       empty.append(element('h2',state.token?'Пока нет купленных билетов':'Ваши билеты'),element('p',state.token?'Отметьте купленный билет в разделе «Добавить билет». Здесь появятся его дата и выбранные напоминания.':'Здесь будут ваши купленные билеты, даты событий и выбранные напоминания.'));
     }else if(filter==='venues'){
