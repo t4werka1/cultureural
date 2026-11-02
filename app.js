@@ -67,7 +67,7 @@ async function api(path,body,method){
     return{events:previewData.events.filter(row=>isLink?row.link.replace('://www.', '://')===query.replace('://www.', '://').replace(/\/$/,''):words.every(word=>normalizeText(row.title).includes(word))).map(row=>({...row,sessions:row.sessions.filter(at=>at>Date.now())})).filter(row=>row.sessions.length).slice(0,20)};
   }
   try{
-    const response=await fetch(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+    const response=await fetch(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json','bypass-tunnel-reminder':'true',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
     if(!response.ok){const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);}
     const value=await response.json();return value;
   }catch(err){
