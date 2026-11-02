@@ -9,6 +9,7 @@ function feedback(text,isError=false){const node=$('feedback');node.textContent=
 const localTicketsKey='cultureural_tickets_v1';
 const localFavsKey='cultureural_favorites_v1';
 async function api(path,body,method){
+  const m=(method||(body===undefined?'GET':'POST')).toUpperCase();
   const route=new URL(path,'http://mini.local');
   if(staticPreview||!apiBase){
     if(!previewData){const response=await fetch('./preview.json');if(!response.ok)throw new Error('Каталог временно недоступен. Попробуйте позже.');previewData=await response.json();}
@@ -23,17 +24,17 @@ async function api(path,body,method){
         if(body.enabled){if(!favs.includes(body.id))favs.push(body.id);}
         else{favs=favs.filter(id=>id!==body.id);}
         localStorage.setItem(localFavsKey,JSON.stringify(favs));
-        return{venues:favs};
+        return{venues:favs,favorites:favs};
       }
       return{venues:previewData.venues};
     }
     if(route.pathname==='/preferences'){
       const favs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
-      return{venues:favs};
+      return{venues:favs,favorites:favs};
     }
     if(route.pathname==='/tickets'){
       let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
-      if(method==='POST'){
+      if(m==='POST'){
         const id=body.id||Date.now();
         const item={...body,id,kind:'ticket'};
         const idx=tickets.findIndex(t=>t.id===id);
@@ -43,7 +44,7 @@ async function api(path,body,method){
       }
       return tickets;
     }
-    if(route.pathname.startsWith('/tickets/')&&method==='DELETE'){
+    if(route.pathname.startsWith('/tickets/')&&m==='DELETE'){
       const id=Number(route.pathname.slice(9));
       let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
       tickets=tickets.filter(t=>t.id!==id);
@@ -66,7 +67,7 @@ async function api(path,body,method){
     return{events:previewData.events.filter(row=>isLink?row.link.replace('://www.', '://')===query.replace('://www.', '://').replace(/\/$/,''):words.every(word=>normalizeText(row.title).includes(word))).map(row=>({...row,sessions:row.sessions.filter(at=>at>Date.now())})).filter(row=>row.sessions.length).slice(0,20)};
   }
   try{
-    const response=await fetch(apiBase+'/mini/v1'+path,{method:method||(body===undefined?'GET':'POST'),headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+    const response=await fetch(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
     if(!response.ok){const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);}
     const value=await response.json();return value;
   }catch(err){
@@ -130,12 +131,12 @@ function renderTickets(){
     if(ticket.link){const a=element('a','Открыть страницу события ↗');a.href=ticket.link;a.target='_blank';a.rel='noopener noreferrer';card.append(a);}
     const actions=element('div',undefined,'ticket-actions');
     if(!past){const edit=element('button',isTicket?'Изменить напоминания':'Я купил билет — напомнить','text-button');edit.type='button';edit.addEventListener('click',()=>{view('add');if(isTicket)openTicket(null,ticket);else openTicket({id:ticket.id,title:ticket.title,sessions:[ticket.eventAt]});});actions.append(edit);}
-    if(isTicket){const remove=element('button','Убрать билет','text-button remove');remove.type='button';remove.addEventListener('click',()=>action(remove,async()=>{await api('/tickets/'+ticket.id,undefined,'DELETE');await loadTickets();feedback('Билет убран. Оставшиеся напоминания отменены.');}));actions.append(remove);}card.append(actions);list.append(card);
+    if(isTicket){const remove=element('button','Убрать билет','text-button remove');remove.type='button';remove.addEventListener('click',()=>action(remove,async()=>{await api('/tickets/'+ticket.id,undefined,'DELETE');let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');tickets=tickets.filter(t=>t.id!==ticket.id);localStorage.setItem(localTicketsKey,JSON.stringify(tickets));await loadTickets();feedback('Билет убран. Оставшиеся напоминания отменены.');}));actions.append(remove);}card.append(actions);list.append(card);
   }
 }
 async function loadVenues(){
   const catalog=await api('/venues');state.venues=catalog.venues;
-  state.favorites=state.token?(await api('/preferences')).venues:[];renderVenues();
+  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}renderVenues();
 }
 function renderVenues(){
   $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;$('venues-list').replaceChildren();
@@ -156,7 +157,11 @@ function renderVenues(){
 async function setFavorite(id,enabled){
   if(venueBusy)return;venueBusy=true;$('venue-query').disabled=true;$('venue-find').disabled=true;renderVenues();
   try{
-    state.favorites=(await api('/venues',{id,enabled})).venues;
+    const res=await api('/venues',{id,enabled});
+    state.favorites=res.venues||res.favorites||[];
+    let favs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+    if(enabled){if(!favs.includes(id))favs.push(id);}else{favs=favs.filter(x=>x!==id);}
+    localStorage.setItem(localFavsKey,JSON.stringify(favs));
     if(enabled){$('venue-query').value='';venueSearch.reset();}
     feedback(enabled?'Площадка добавлена. Анонсы будут приходить в чат, события — в «Мои события».':'Подписка на площадку выключена. Купленные билеты сохранены.');
   }finally{venueBusy=false;$('venue-query').disabled=false;$('venue-find').disabled=false;renderVenues();}
@@ -199,7 +204,14 @@ $('ticket-form').addEventListener('submit',event=>{
     const value={hours,...(state.editing?{id:state.editing}:{})};
     if(state.manual){value.title=$('manual-title').value.trim();value.eventAt=manualTime();value.link=state.link;}
     else{value.eventId=state.selected.id;value.title=state.selected.title;value.eventAt=Number($('session').value);value.link=state.selected.link||'';}
-    await api('/tickets',value);await loadTickets();view('tickets');feedback('Билет сохранён в приложении ✓ '+(hours.length?'Напоминания активны.':''));
+    await api('/tickets',value,'POST');
+    let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+    const id=value.id||Date.now();
+    const item={...value,id,kind:'ticket'};
+    const idx=tickets.findIndex(t=>t.id===id);
+    if(idx>=0)tickets[idx]=item;else tickets.push(item);
+    localStorage.setItem(localTicketsKey,JSON.stringify(tickets));
+    await loadTickets();view('tickets');feedback('Билет сохранён в приложении ✓ '+(hours.length?'Напоминания активны.':''));
     $('ticket-form').hidden=true;state.editing=null;
   });
 });
@@ -248,5 +260,6 @@ async function start(){
     }catch(error){$('access').textContent=error.message;$('access').hidden=false;}
   }
   await loadTickets();
+  try{const prefs=await api('/preferences');state.favorites=prefs.venues||prefs.favorites||[];}catch{state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');}
 }
 void start();
