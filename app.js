@@ -157,7 +157,7 @@ function renderTickets(){
     const card=element('article',undefined,'cultural-ticket'+(isTicket?' ticket-bought':' ticket-venue'));
     const top=element('div',undefined,'ticket-top');
     const header=element('div',undefined,'ticket-header');
-    header.append(element('span',isTicket?'● КУПЛЕН БИЛЕТ':'♡ С ПЛОЩАДКИ','ticket-type-pill'));
+    header.append(element('span',isTicket?'Куплен билет':'С площадки','ticket-type-pill'));
     const dateChip=element('div',undefined,'ticket-date-chip');
     const dateEl=element('time',when(ticket.eventAt),'day-time');
     dateEl.dateTime=new Date(ticket.eventAt).toISOString();
@@ -178,7 +178,7 @@ function renderTickets(){
     const footer=element('div',undefined,'ticket-footer');
     const past=ticket.eventAt<=Date.now();
     const reminderStatus=element('div',undefined,'reminder-status');
-    reminderStatus.append(element('span',isTicket?'🔔 ':'🏛 ','bell-icon'));
+    
     reminderStatus.append(element('span',past?'Событие уже состоялось':(isTicket?reminderText(ticket.hours):'Анонс площадки')));
     footer.append(reminderStatus);
 
@@ -190,7 +190,7 @@ function renderTickets(){
       actions.append(edit);
     }
     if(ticket.link){
-      const a=element('a','На сайт ↗','ticket-action-link');
+      const a=element('a','На сайт','ticket-action-link');
       a.href=ticket.link;a.target='_blank';a.rel='noopener noreferrer';
       actions.append(a);
     }
@@ -312,7 +312,7 @@ $('ticket-form').addEventListener('submit',event=>{
     const idx=tickets.findIndex(t=>t.id===id);
     if(idx>=0)tickets[idx]=item;else tickets.push(item);
     localStorage.setItem(localTicketsKey,JSON.stringify(tickets));
-    await loadTickets();view('tickets');feedback('Билет сохранён в приложении ✓ '+(hours.length?'Напоминания активны.':''));
+    await loadTickets();view('tickets');feedback('Билет сохранён в приложении. '+(hours.length?'Напоминания активны.':''));
     $('ticket-form').hidden=true;state.editing=null;
   });
 });

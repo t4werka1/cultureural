@@ -40,7 +40,7 @@
     <section class="hero-pass">
       <div class="pass-inner">
         <div class="pass-content">
-          <span class="pass-eyebrow"><span>★</span> ВАШ КУЛЬТУРНЫЙ МАРШРУТ</span>
+          <span class="pass-eyebrow">ВАШ КУЛЬТУРНЫЙ МАРШРУТ</span>
           <h1 class="pass-title">События и билеты</h1>
           <p class="pass-meta">Напоминания о спектаклях в MAX и анонсы 18 избранных площадок Южного Урала.</p>
         </div>
@@ -53,15 +53,15 @@
     <!-- Верхняя сегментированная навигация (порядок: 1. Добавить билет, 2. События и билеты, 3. Площадки) -->
     <nav class="tab-navigation" role="tablist" aria-label="Разделы">
       <button type="button" class="tab-btn active" id="nav-add" aria-current="page" role="tab">
-        <span>➕ Добавить билет</span>
+        <span class="tab-label-full">Добавить билет</span>
+        <span class="tab-label-short">Добавить</span>
       </button>
       <button type="button" class="tab-btn" id="nav-tickets" role="tab" aria-label="Мои события и билеты">
-        <span>▤ События и билеты</span>
+        <span>Билеты</span>
         <span class="tab-badge" id="ticket-count"></span>
       </button>
       <button type="button" class="tab-btn" id="nav-venues" role="tab" aria-label="Площадки">
-        <span>♡ Площадки</span>
-        <span class="tab-badge" id="venue-count">18</span>
+        <span>Площадки</span>
       </button>
     </nav>
 
@@ -79,7 +79,6 @@
           <div id="results" role="listbox" aria-label="Варианты мероприятий" hidden></div>
           <button id="find" class="btn-primary-action" type="submit">
             <span>Найти мероприятие</span>
-            <span>↗</span>
           </button>
           <button id="manual-toggle" class="text-button" type="button" aria-controls="ticket-form" aria-expanded="false">Указать событие вручную</button>
         </form>
@@ -140,7 +139,6 @@
           <!-- Кнопка со скриншота 2 переименована в «Сохранить» -->
           <button id="save" type="submit" class="btn-primary-action">
             <span>Сохранить</span>
-            <span>✓</span>
           </button>
           <p class="fine-print">Покупку отмечаете вы. Бот не проверяет оплату.</p>
         </form>
@@ -161,25 +159,23 @@
           <button type="button" class="chip-btn filter-tab" data-filter="venues" role="tab" aria-selected="false">С площадок</button>
         </div>
         <div class="feed-legend">
-          <span>● Билеты и напоминания</span>
-          <span>♡ События площадок</span>
+          <span class="legend-dot-pink">Билеты и напоминания</span>
+          <span class="legend-dot-cyan">События площадок</span>
         </div>
         <!-- Список билетов со сквозным вырезом перфорации -->
         <div id="tickets-list" class="ticket-stack" aria-live="polite"></div>
         <button id="add-another" class="btn-primary-action" type="button" style="margin-top:20px;">
           <span>Добавить билет</span>
-          <span>＋</span>
         </button>
         <button id="choose-venues" class="btn-secondary-action" type="button" style="margin-top:10px;">
           <span>Выбрать избранные места</span>
-          <span>♡</span>
         </button>
       </section>
 
       <!-- РАЗДЕЛ 3: ПЛОЩАДКИ -->
       <section id="venues-view" aria-labelledby="venues-title" hidden>
         <div class="venues-header-row">
-          <span class="venues-counter-tag">Избранные площадки</span>
+          <span class="venues-counter-tag">Избранные площадки <small id="venue-count" class="venues-badge"></small></span>
           <span style="font-size:11px;color:var(--text-muted)">Новые анонсы придут в MAX</span>
         </div>
         <form id="venue-search-form" class="form-card" method="get" action="/mini/v1/venues" style="margin-top:14px;">
@@ -193,7 +189,6 @@
           <div id="venue-results" role="listbox" aria-label="Варианты площадок" hidden></div>
           <button id="venue-find" class="btn-primary-action" type="submit">
             <span>Найти площадку</span>
-            <span>↗</span>
           </button>
         </form>
         <div id="venues-list" style="margin-top:16px;"></div>
