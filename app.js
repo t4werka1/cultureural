@@ -112,7 +112,7 @@ function openTicket(event=null,ticket=null){
   $('session').replaceChildren();for(const at of event?.sessions||[]){const option=element('option',when(at));option.value=at;$('session').append(option);}
   if(ticket&&event)$('session').value=ticket.eventAt;
   for(const input of document.querySelectorAll('input[name=hours]'))input.checked=(ticket?.hours||[2]).includes(Number(input.value));
-  $('save').firstChild.textContent=ticket?'Сохранить напоминания ':'Билет куплен — сохранить ';
+  $('save').firstChild.textContent='Сохранить ';
   $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function loadTickets(){
@@ -153,14 +153,64 @@ function renderTickets(){
     list.append(empty);return;
   }
   for(const ticket of items){
-    const isTicket=ticket.kind==='ticket',card=element('article',undefined,'card ticket'+(isTicket?'':' venue-event')),date=element('time',when(ticket.eventAt));date.dateTime=new Date(ticket.eventAt).toISOString();
-    card.append(element('span',isTicket?'БИЛЕТ И НАПОМИНАНИЯ':'С ЛЮБИМОЙ ПЛОЩАДКИ','event-kind'),date,element('h2',ticket.title));
-    if(ticket.venues?.length)card.append(element('p',ticket.venues.map(v=>v.title).join(' · '),'venue-caption'));
-    const past=ticket.eventAt<=Date.now();if(isTicket)card.append(element('p',past?'Событие уже состоялось':reminderText(ticket.hours),'ticket-alert'));
-    if(ticket.link){const a=element('a','Открыть страницу события ↗');a.href=ticket.link;a.target='_blank';a.rel='noopener noreferrer';card.append(a);}
-    const actions=element('div',undefined,'ticket-actions');
-    if(!past){const edit=element('button',isTicket?'Изменить напоминания':'Я купил билет — напомнить','text-button');edit.type='button';edit.addEventListener('click',()=>{view('add');if(isTicket)openTicket(null,ticket);else openTicket({id:ticket.id,title:ticket.title,sessions:[ticket.eventAt]});});actions.append(edit);}
-    if(isTicket){const remove=element('button','Убрать билет','text-button remove');remove.type='button';remove.addEventListener('click',()=>action(remove,async()=>{await api('/tickets/'+ticket.id,undefined,'DELETE');let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');tickets=tickets.filter(t=>t.id!==ticket.id);localStorage.setItem(localTicketsKey,JSON.stringify(tickets));await loadTickets();feedback('Билет убран. Оставшиеся напоминания отменены.');}));actions.append(remove);}card.append(actions);list.append(card);
+    const isTicket=ticket.kind==='ticket';
+    const card=element('article',undefined,'cultural-ticket'+(isTicket?' ticket-bought':' ticket-venue'));
+    const top=element('div',undefined,'ticket-top');
+    const header=element('div',undefined,'ticket-header');
+    header.append(element('span',isTicket?'● КУПЛЕН БИЛЕТ':'♡ С ПЛОЩАДКИ','ticket-type-pill'));
+    const dateChip=element('div',undefined,'ticket-date-chip');
+    const dateEl=element('time',when(ticket.eventAt),'day-time');
+    dateEl.dateTime=new Date(ticket.eventAt).toISOString();
+    dateChip.append(dateEl);
+    header.append(dateChip);
+    top.append(header);
+
+    const body=element('div',undefined,'ticket-body');
+    body.append(element('h2',ticket.title,'ticket-event-title'));
+    if(ticket.venues?.length)body.append(element('p',ticket.venues.map(v=>v.title).join(' · '),'ticket-venue-name'));
+    top.append(body);
+    card.append(top);
+
+    const perf=element('div',undefined,'ticket-perf');
+    card.append(perf);
+
+    const bottom=element('div',undefined,'ticket-bottom');
+    const footer=element('div',undefined,'ticket-footer');
+    const past=ticket.eventAt<=Date.now();
+    const reminderStatus=element('div',undefined,'reminder-status');
+    reminderStatus.append(element('span',isTicket?'🔔 ':'🏛 ','bell-icon'));
+    reminderStatus.append(element('span',past?'Событие уже состоялось':(isTicket?reminderText(ticket.hours):'Анонс площадки')));
+    footer.append(reminderStatus);
+
+    const actions=element('div',undefined,'ticket-actions-group');
+    if(!past){
+      const edit=element('button',isTicket?'Изменить':'Я купил билет','ticket-action-btn edit');
+      edit.type='button';
+      edit.addEventListener('click',()=>{view('add');if(isTicket)openTicket(null,ticket);else openTicket({id:ticket.id,title:ticket.title,sessions:[ticket.eventAt]});});
+      actions.append(edit);
+    }
+    if(ticket.link){
+      const a=element('a','На сайт ↗','ticket-action-link');
+      a.href=ticket.link;a.target='_blank';a.rel='noopener noreferrer';
+      actions.append(a);
+    }
+    if(isTicket){
+      const remove=element('button','Убрать','ticket-action-btn danger');
+      remove.type='button';
+      remove.addEventListener('click',()=>action(remove,async()=>{
+        await api('/tickets/'+ticket.id,undefined,'DELETE');
+        let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+        tickets=tickets.filter(t=>t.id!==ticket.id);
+        localStorage.setItem(localTicketsKey,JSON.stringify(tickets));
+        await loadTickets();
+        feedback('Билет убран. Оставшиеся напоминания отменены.');
+      }));
+      actions.append(remove);
+    }
+    footer.append(actions);
+    bottom.append(footer);
+    card.append(bottom);
+    list.append(card);
   }
 }
 async function loadVenues(){
