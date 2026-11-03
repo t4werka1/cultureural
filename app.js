@@ -8,7 +8,9 @@ function element(tag,text,className){const node=document.createElement(tag);if(t
 function feedback(text,isError=false){const node=$('feedback');node.textContent=text;node.classList.toggle('error',isError);node.hidden=!text;if(isError)node.focus();}
 const localTicketsKey='cultureural_tickets_v1';
 const localFavsKey='cultureural_favorites_v1';
-async function api(path,body,method,isFallback=false){
+const localTokenKey='cultureural_token_v1';
+state.token=localStorage.getItem(localTokenKey)||null;
+async function api(path,body,method,isFallback=false,isRetry=false){
   const m=(method||(body===undefined?'GET':'POST')).toUpperCase();
   const route=new URL(path,'http://mini.local');
   if(staticPreview||!apiBase||isFallback){
@@ -68,6 +70,22 @@ async function api(path,body,method,isFallback=false){
   }
   try{
     const response=await fetch(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json','bypass-tunnel-reminder':'true',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+    if(response.status===401&&!isRetry){
+      const initData=getInitData();
+      if(initData){
+        try{
+          const authRes=await fetch(apiBase+'/mini/v1/auth',{method:'POST',headers:{'Content-Type':'application/json','bypass-tunnel-reminder':'true'},body:JSON.stringify({initData}),signal:AbortSignal.timeout(10000)});
+          if(authRes.ok){
+            const s=await authRes.json();
+            if(s?.token){
+              state.token=s.token;
+              localStorage.setItem(localTokenKey,s.token);
+              return api(path,body,method,false,true);
+            }
+          }
+        }catch{}
+      }
+    }
     if(!response.ok){const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);}
     const value=await response.json();return value;
   }catch(err){
@@ -97,7 +115,19 @@ function openTicket(event=null,ticket=null){
   $('save').firstChild.textContent=ticket?'Сохранить напоминания ':'Билет куплен — сохранить ';
   $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
-async function loadTickets(){state.tickets=(await api('/my-events')).items;$('ticket-count').textContent=state.tickets.length||'';renderTickets();}
+async function loadTickets(){
+  try{
+    const res=await api('/my-events');
+    state.tickets=res?.items||[];
+    if(state.token&&state.tickets.length){
+      localStorage.setItem(localTicketsKey,JSON.stringify(state.tickets.filter(row=>row.kind==='ticket')));
+    }
+  }catch{
+    state.tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+  }
+  $('ticket-count').textContent=state.tickets.length||'';
+  renderTickets();
+}
 const reminderText=hours=>hours.length?'Напоминания: '+hours.map(hour=>hour===24?'за сутки':hour===1?'за час':'за '+new Intl.NumberFormat('ru-RU',{style:'unit',unit:'hour',unitDisplay:'long'}).format(hour)).join(', '):'Напоминания выключены';
 function renderTickets(){
   const list=$('tickets-list');list.replaceChildren();
@@ -134,11 +164,20 @@ function renderTickets(){
   }
 }
 async function loadVenues(){
-  const catalog=await api('/venues');state.venues=catalog.venues;
+  try{
+    const catalog=await api('/venues');
+    state.venues=catalog?.venues||[];
+  }catch{
+    state.venues=previewData?.venues||[];
+  }
   try{
     const prefs=await api('/preferences');
-    state.favorites=prefs.favorites||prefs.venues||JSON.parse(localStorage.getItem(localFavsKey)||'[]');
-    localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
+    if(prefs&&(prefs.favorites||prefs.venues)){
+      state.favorites=prefs.favorites||prefs.venues||[];
+      localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
+    }else{
+      state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+    }
   }catch{
     state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
   }
@@ -269,38 +308,51 @@ async function start(){
   }
   if(!window.WebApp&&window.Telegram?.WebApp)window.WebApp=window.Telegram.WebApp;
   if(!window.WebApp&&window.Max?.WebApp)window.WebApp=window.Max.WebApp;
+  if(!hostedOnPages && (location.protocol==='http:'||location.protocol==='https:')){
+    apiBase=location.origin;staticPreview=false;
+  }
   if(hostedOnPages){
-    try{
-      const response=await fetch('./connection.json',{cache:'no-store',signal:AbortSignal.timeout(6000)});
-      if(response.ok){
-        const config=await response.json();
-        if(config.apiBase){
-          const url=new URL(config.apiBase);
-          if(url.protocol==='https:'&&!url.username&&!url.password&&url.pathname==='/'){
-            apiBase=url.origin;staticPreview=false;
+    const queryApi=new URLSearchParams(window.location.search).get('api');
+    if(queryApi && URL.canParse(queryApi)){
+      apiBase=new URL(queryApi).origin;staticPreview=false;
+    }
+    if(!apiBase){
+      try{
+        const response=await fetch('./connection.json',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        if(response.ok){
+          const config=await response.json();
+          if(config.apiBase){
+            const url=new URL(config.apiBase);
+            if((url.protocol==='https:'||url.protocol==='http:')&&!url.username&&!url.password){
+              apiBase=url.origin;staticPreview=false;
+              try{localStorage.setItem('cultureural_api_base_v1',apiBase);}catch{}
+            }
           }
         }
-      }
-    }catch{}
+      }catch{}
+    }
+    if(!apiBase){
+      const cachedApi=localStorage.getItem('cultureural_api_base_v1');
+      if(cachedApi){apiBase=cachedApi;staticPreview=false;}
+    }
   }
   const initData=getInitData();
   if(initData&&apiBase){
     try{
       const session=await api('/auth',{initData});
-      state.token=session.token;
-      $('access').hidden=true;
-      $('start-notice').hidden=!session.needsStart;
-      const localFavs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
-      for(const id of localFavs){try{await api('/venues',{id,enabled:true});}catch{}}
-    }catch(error){$('access').textContent=error.message;$('access').hidden=false;}
+      if(session?.token){
+        state.token=session.token;
+        localStorage.setItem(localTokenKey,session.token);
+        $('access').hidden=true;
+        $('start-notice').hidden=!session.needsStart;
+        const localFavs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+        for(const id of localFavs){try{await api('/venues',{id,enabled:true});}catch{}}
+      }
+    }catch(error){
+      if(!state.token){$('access').textContent=error.message;$('access').hidden=false;}
+    }
   }
   await loadTickets();
-  try{
-    const prefs=await api('/preferences');
-    state.favorites=prefs.favorites||prefs.venues||JSON.parse(localStorage.getItem(localFavsKey)||'[]');
-    localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
-  }catch{
-    state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
-  }
+  await loadVenues();
 }
 void start();
