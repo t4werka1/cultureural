@@ -112,7 +112,7 @@ function openTicket(event=null,ticket=null){
   $('session').replaceChildren();for(const at of event?.sessions||[]){const option=element('option',when(at));option.value=at;$('session').append(option);}
   if(ticket&&event)$('session').value=ticket.eventAt;
   for(const input of document.querySelectorAll('input[name=hours]'))input.checked=(ticket?.hours||[2]).includes(Number(input.value));
-  $('save').firstChild.textContent='Сохранить ';
+  $('save').textContent='Сохранить';
   $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function loadTickets(){
