@@ -102,7 +102,20 @@ async function api(path,body,method,isFallback=false,isRetry=false){
     return api(path,body,method,true);
   }
 }
-function view(name){for(const key of ['add','tickets','venues']){$(key+'-view').hidden=key!==name;const nav=$('nav-'+key);nav.removeAttribute('aria-current');nav.classList.toggle('active',key===name);if(key===name)nav.setAttribute('aria-current','page');}feedback('');window.scrollTo({top:0,behavior:'instant'});}
+function view(name){
+  for(const key of ['add','tickets','venues']){
+    $(key+'-view').hidden=key!==name;
+    const nav=$('nav-'+key);
+    if(nav){
+      nav.disabled=false;
+      nav.removeAttribute('aria-current');
+      nav.classList.toggle('active',key===name);
+      if(key===name)nav.setAttribute('aria-current','page');
+    }
+  }
+  feedback('');
+  window.scrollTo({top:0,behavior:'instant'});
+}
 async function action(button,fn){button.disabled=true;try{await fn();}catch(error){feedback(error.message,true);}finally{button.disabled=false;}}
 const manualTime=()=>state.manualAt&&$('manual-date').value===state.manualDate?state.manualAt:Date.parse($('manual-date').value+'+05:00');
 function syncOffsets(){
@@ -125,7 +138,10 @@ function openTicket(event=null,ticket=null){
   $('save').textContent='Сохранить';
   $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
+let ticketsLoading=false;
 async function loadTickets(){
+  if(ticketsLoading)return;
+  ticketsLoading=true;
   try{
     const res=await api('/my-events');
     state.tickets=res?.items||[];
@@ -134,6 +150,8 @@ async function loadTickets(){
     }
   }catch{
     state.tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+  }finally{
+    ticketsLoading=false;
   }
   $('ticket-count').textContent=state.tickets.length||'';
   renderTickets();
@@ -223,23 +241,28 @@ function renderTickets(){
     list.append(card);
   }
 }
+let venuesLoading=false;
 async function loadVenues(){
+  if(venuesLoading)return;
+  venuesLoading=true;
   try{
-    const catalog=await api('/venues');
-    state.venues=catalog?.venues||[];
-  }catch{
-    state.venues=previewData?.venues||[];
-  }
-  try{
-    const prefs=await api('/preferences');
-    if(prefs&&(prefs.favorites||prefs.venues)){
-      state.favorites=prefs.favorites||prefs.venues||[];
+    const [catalogRes,prefsRes]=await Promise.allSettled([api('/venues'),api('/preferences')]);
+    if(catalogRes.status==='fulfilled'&&catalogRes.value?.venues){
+      state.venues=catalogRes.value.venues;
+    }else if(!state.venues.length){
+      state.venues=previewData?.venues||[];
+    }
+    if(prefsRes.status==='fulfilled'&&(prefsRes.value?.favorites||prefsRes.value?.venues)){
+      state.favorites=prefsRes.value.favorites||prefsRes.value.venues||[];
       localStorage.setItem(localFavsKey,JSON.stringify(state.favorites));
-    }else{
+    }else if(!state.favorites.length){
       state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
     }
   }catch{
-    state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+    if(!state.venues.length)state.venues=previewData?.venues||[];
+    if(!state.favorites.length)state.favorites=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
+  }finally{
+    venuesLoading=false;
   }
   renderVenues();
 }
@@ -330,8 +353,8 @@ $('manual-toggle').addEventListener('click',()=>{openTicket();state.link=/^https
 $('back-to-search').addEventListener('click',()=>{$('ticket-form').hidden=true;state.editing=null;$('query').focus();$('manual-toggle').setAttribute('aria-expanded','false');});
 $('session').addEventListener('change',syncOffsets);$('manual-date').addEventListener('change',syncOffsets);
 $('nav-add').addEventListener('click',()=>view('add'));$('add-another').addEventListener('click',()=>{view('add');$('query').focus();});
-async function showVenues(){view('venues');await loadVenues();}
-$('nav-tickets').addEventListener('click',()=>action($('nav-tickets'),async()=>{view('tickets');await loadTickets();}));
+function showVenues(){view('venues');void loadVenues();}
+$('nav-tickets').addEventListener('click',()=>{view('tickets');void loadTickets();});
 document.querySelectorAll('.filter-tab').forEach(btn=>{
   btn.addEventListener('click',()=>{
     state.filter=btn.dataset.filter||'all';
@@ -343,8 +366,8 @@ document.querySelectorAll('.filter-tab').forEach(btn=>{
     renderTickets();
   });
 });
-$('nav-venues').addEventListener('click',()=>action($('nav-venues'),showVenues));
-$('choose-venues').addEventListener('click',()=>action($('choose-venues'),showVenues));
+$('nav-venues').addEventListener('click',showVenues);
+$('choose-venues').addEventListener('click',showVenues);
 function getInitData(){
   if(window.WebApp?.initData)return window.WebApp.initData;
   if(window.Telegram?.WebApp?.initData)return window.Telegram.WebApp.initData;
