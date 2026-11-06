@@ -86,9 +86,19 @@ async function api(path,body,method,isFallback=false,isRetry=false){
         }catch{}
       }
     }
-    if(!response.ok){const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);}
+    if(!response.ok){
+      if(!isRetry&&(response.status>=500||response.status===404)&&hostedOnPages){
+        const refreshed=await refreshApiBase();
+        if(refreshed)return api(path,body,method,false,true);
+      }
+      const val=await response.json().catch(()=>({}));throw new Error(val.error||`HTTP ${response.status}`);
+    }
     const value=await response.json();return value;
   }catch(err){
+    if(!isRetry&&hostedOnPages){
+      const refreshed=await refreshApiBase();
+      if(refreshed)return api(path,body,method,false,true);
+    }
     return api(path,body,method,true);
   }
 }
@@ -352,6 +362,23 @@ function getInitData(){
   }catch{}
   return null;
 }
+async function refreshApiBase(){
+  try{
+    const response=await fetch('./connection.json?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(6000)});
+    if(response.ok){
+      const config=await response.json();
+      if(config.apiBase&&config.apiBase!==apiBase){
+        const url=new URL(config.apiBase);
+        if((url.protocol==='https:'||url.protocol==='http:')&&!url.username&&!url.password){
+          apiBase=url.origin;staticPreview=false;
+          try{localStorage.setItem('cultureural_api_base_v1',apiBase);}catch{}
+          return true;
+        }
+      }
+    }
+  }catch{}
+  return false;
+}
 async function start(){
   for(const o of [window.WebApp, window.Telegram?.WebApp, window.Max?.WebApp, window.MaxWebApp]){
     if(o?.ready){try{o.ready();}catch{}}
@@ -368,7 +395,7 @@ async function start(){
     }
     if(!apiBase){
       try{
-        const response=await fetch('./connection.json',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        const response=await fetch('./connection.json?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(6000)});
         if(response.ok){
           const config=await response.json();
           if(config.apiBase){
