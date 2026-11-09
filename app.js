@@ -54,7 +54,10 @@ async function api(path,body,method,isFallback=false,isRetry=false){
       return{ok:true};
     }
     if(route.pathname==='/my-events'){
-      const tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+      const cutoff=Date.now()-15*60*1000;
+      let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
+      tickets=tickets.filter(t=>!(t.eventAt<=cutoff));
+      localStorage.setItem(localTicketsKey,JSON.stringify(tickets));
       const favs=JSON.parse(localStorage.getItem(localFavsKey)||'[]');
       const catalog=previewData.events||[];
       const now=Date.now();
@@ -129,6 +132,7 @@ function openTicket(event=null,ticket=null){
   feedback('');state.selected=event;state.editing=ticket?.id||null;state.manual=!event;state.link=ticket?.link||'';
   $('ticket-form').hidden=false;$('manual-fields').hidden=Boolean(event);$('sessions-field').hidden=!event;$('results').replaceChildren();
   $('selected-title').textContent=event?.title||ticket?.title||'Добавить вручную';$('manual-title').value=ticket?.title||(!/^https?:\/\//i.test($('query').value)?$('query').value:'');
+  $('manual-venue').value=ticket?.venue||'';
   $('manual-date').value=ticket?new Date(ticket.eventAt+5*3600000).toISOString().slice(0,16):'';
   state.manualAt=ticket?.eventAt||null;state.manualDate=$('manual-date').value;
   $('manual-title').required=!event;$('manual-date').required=!event;
@@ -144,7 +148,8 @@ async function loadTickets(){
   ticketsLoading=true;
   try{
     const res=await api('/my-events');
-    state.tickets=res?.items||[];
+    const cutoff=Date.now()-15*60*1000;
+    state.tickets=(res?.items||[]).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
     if(state.token&&state.tickets.length){
       localStorage.setItem(localTicketsKey,JSON.stringify(state.tickets.filter(row=>row.kind==='ticket')));
     }
@@ -160,7 +165,9 @@ const reminderText=hours=>hours.length?'Напоминания: '+hours.map(hour
 function renderTickets(){
   const list=$('tickets-list');list.replaceChildren();
   const filter=state.filter||'all';
+  const cutoff=Date.now()-15*60*1000;
   const items=state.tickets.filter(row=>{
+    if(row.kind==='ticket'&&row.eventAt<=cutoff)return false;
     if(filter==='tickets')return row.kind==='ticket';
     if(filter==='venues')return row.kind!=='ticket';
     return true;
@@ -195,7 +202,8 @@ function renderTickets(){
 
     const body=element('div',undefined,'ticket-body');
     body.append(element('h2',ticket.title,'ticket-event-title'));
-    if(ticket.venues?.length)body.append(element('p',ticket.venues.map(v=>v.title).join(' · '),'ticket-venue-name'));
+    const venueText=ticket.venue||(ticket.venues?.length?ticket.venues.map(v=>v.title).join(' · '):'');
+    if(venueText)body.append(element('p',venueText,'ticket-venue-name'));
     top.append(body);
     card.append(top);
 
@@ -336,7 +344,7 @@ $('ticket-form').addEventListener('submit',event=>{
   event.preventDefault();action($('save'),async()=>{
     const hours=[...document.querySelectorAll('input[name=hours]:checked:not(:disabled)')].map(input=>Number(input.value));
     const value={hours,...(state.editing?{id:state.editing}:{})};
-    if(state.manual){value.title=$('manual-title').value.trim();value.eventAt=manualTime();value.link=state.link;}
+    if(state.manual){value.title=$('manual-title').value.trim();value.venue=$('manual-venue').value.trim();value.eventAt=manualTime();value.link=state.link;}
     else{value.eventId=state.selected.id;value.title=state.selected.title;value.eventAt=Number($('session').value);value.link=state.selected.link||'';}
     await api('/tickets',value,'POST');
     let tickets=JSON.parse(localStorage.getItem(localTicketsKey)||'[]');
