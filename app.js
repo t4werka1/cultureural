@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const state={token:null,selected:null,editing:null,manual:false,manualAt:null,manualDate:'',tickets:[],venues:[],favorites:[],link:'',filter:'all'};
-const hostedOnPages=location.hostname.endsWith('.github.io');let apiBase='',previewData;
+const hostedOnPages=location.hostname.endsWith('.github.io');let apiBase='',previewRequest,connectionReady,authorizing,launchData;
 let venueBusy=false;
 const normalizeText=value=>String(value||'').toLowerCase().replaceAll('ё','е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const when=value=>new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Yekaterinburg',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(value);
@@ -29,11 +29,12 @@ async function fetchWithTimeout(url,options,milliseconds){
 state.token=readCache(localTokenKey);
 
 async function publicPreview(route,body){
-  if(!previewData){
+  previewRequest??=(async()=>{
     const response=await fetchWithTimeout('./preview.json',{},6000);
     if(!response.ok)throw new Error('Каталог временно недоступен. Попробуйте позже.');
-    previewData=await response.json();
-  }
+    return response.json();
+  })().catch(error=>{previewRequest=null;throw error;});
+  const previewData=await previewRequest;
   if(route.pathname==='/venues'){
     const query=route.searchParams.get('query');
     if(query===null)return {venues:previewData.venues};
@@ -50,6 +51,8 @@ async function api(path,body,method,isRetry=false){
   const canReadPreview=route.pathname==='/search'||(route.pathname==='/venues'&&m==='GET');
   const canRetry=m==='GET'||route.pathname==='/search';
   const unavailable=()=>new Error('Сервис временно недоступен. Попробуйте позже.');
+  if(!canReadPreview&&path!=='/auth'&&authorizing)await authorizing;
+  if(connectionReady)await connectionReady;
   if(!apiBase){
     if(canReadPreview)return publicPreview(route,body);
     throw unavailable();
@@ -80,7 +83,10 @@ async function api(path,body,method,isRetry=false){
   }
   const value=await response.json().catch(()=>null);
   if(!response.ok)throw new Error(value?.error||`HTTP ${response.status}`);
-  if(!value)throw unavailable();
+  if(!value){
+    if(canReadPreview)return publicPreview(route,body);
+    throw unavailable();
+  }
   return value;
 }
 function view(name){
@@ -235,8 +241,6 @@ async function loadVenues(){
     const [catalogRes,prefsRes]=await Promise.allSettled([api('/venues'),api('/preferences')]);
     if(catalogRes.status==='fulfilled'&&catalogRes.value?.venues){
       state.venues=catalogRes.value.venues;
-    }else if(!state.venues.length){
-      state.venues=previewData?.venues||[];
     }
     if(prefsRes.status==='fulfilled'&&(prefsRes.value?.favorites||prefsRes.value?.venues)){
       state.favorites=prefsRes.value.favorites||prefsRes.value.venues||[];
@@ -245,7 +249,6 @@ async function loadVenues(){
       state.favorites=readList(localFavsKey);
     }
   }catch{
-    if(!state.venues.length)state.venues=previewData?.venues||[];
     if(!state.favorites.length)state.favorites=readList(localFavsKey);
   }finally{
     venuesLoading=false;
@@ -278,21 +281,43 @@ async function setFavorite(id,enabled){
     feedback(enabled?'Площадка добавлена. Анонсы будут приходить в чат, события — в «Мои события».':'Подписка на площадку выключена. Купленные билеты сохранены.');
   }finally{venueBusy=false;$('venue-query').disabled=false;$('venue-find').disabled=false;renderVenues();}
 }
-function autocomplete({inputId,resultsId,statusId,load,subtitle,select,onInput=()=>{},loadingText,emptyText,onEmptySubmit}){
+function autocomplete({inputId,resultsId,statusId,load,preview,subtitle,select,onInput=()=>{},loadingText,emptyText,onEmptySubmit}){
   const input=$(inputId),results=$(resultsId),status=$(statusId);let timer,version=0,active=-1,items=[];
   function reset(){clearTimeout(timer);version++;active=-1;items=[];results.replaceChildren();results.hidden=true;status.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');}
   function choose(item){reset();input.value=item.title;select(item);}
   async function run(selectSingle=false){
     clearTimeout(timer);const request=++version,query=input.value.trim();if(query.length<2){reset();return;}
     status.textContent=loadingText;status.hidden=false;
-    try{
-      const found=await load(query);if(request!==version||query!==input.value.trim())return;
+    let finished=false, provisional=false;
+    const current=()=>request===version&&query===input.value.trim();
+    function show(found){
       items=found;active=-1;results.replaceChildren();input.removeAttribute('aria-activedescendant');
-      if(selectSingle&&items.length===1){choose(items[0]);return;}
-      if(selectSingle&&!items.length&&onEmptySubmit){reset();onEmptySubmit(query);return;}
-      status.textContent=items.length?`Найдено: ${items.length}. Выберите вариант.`:emptyText;results.hidden=!items.length;input.setAttribute('aria-expanded',String(Boolean(items.length)));
-      for(const item of items){const button=element('button',undefined,'event-option');button.type='button';button.id=`${resultsId}-option-${item.id}`;button.tabIndex=-1;button.setAttribute('role','option');button.setAttribute('aria-selected','false');button.append(element('strong',item.title),element('small',subtitle(item)));button.addEventListener('click',()=>choose(item));results.append(button);}
-    }catch(error){if(request===version){reset();status.textContent=error.message;status.hidden=false;}}
+      status.textContent=items.length?`Найдено: ${items.length}. Выберите вариант.`:emptyText;
+      results.hidden=!items.length;input.setAttribute('aria-expanded',String(Boolean(items.length)));
+      for(const item of items){
+        const button=element('button',undefined,'event-option');
+        button.type='button';button.id=`${resultsId}-option-${item.id}`;button.tabIndex=-1;
+        button.setAttribute('role','option');button.setAttribute('aria-selected','false');
+        button.append(element('strong',item.title),element('small',subtitle(item)));
+        button.addEventListener('click',()=>choose(item));results.append(button);
+      }
+    }
+    const previewTimer=preview&&setTimeout(async()=>{
+      try{
+        const found=await preview(query);
+        if(current()&&!finished&&found.length){provisional=true;show(found);}
+      }catch{/* The live search continues when the snapshot is unavailable. */}
+    },400);
+    try{
+      const found=await load(query);
+      if(!current())return;
+      if(selectSingle&&found.length===1&&!provisional){choose(found[0]);return;}
+      if(selectSingle&&!found.length&&onEmptySubmit){reset();onEmptySubmit(query);return;}
+      show(found);
+    }catch(error){
+      if(current()&&!provisional){reset();status.textContent=error.message;status.hidden=false;}
+    }finally{finished=true;clearTimeout(previewTimer);}
+
   }
   function changed(event){reset();onInput();if(!event.isComposing&&input.value.trim().length>=2)timer=setTimeout(()=>void run(),250);}
   input.addEventListener('input',changed);input.addEventListener('compositionend',changed);
@@ -306,8 +331,8 @@ function autocomplete({inputId,resultsId,statusId,load,subtitle,select,onInput=(
   return{reset,run};
 }
 function resetSearch(){eventSearch.reset();}
-const eventSearch=autocomplete({inputId:'query',resultsId:'results',statusId:'search-status',load:async query=>(await api('/search',{query})).events,subtitle:item=>when(item.sessions[0])+' · сеансов: '+item.sessions.length,select:item=>{openTicket(item);$('session').focus();},onInput:()=>{feedback('');$('ticket-form').hidden=true;},loadingText:'Ищем события…',emptyText:'В каталоге нет будущих сеансов по этому названию. Можно указать событие вручную.',onEmptySubmit:query=>{openTicket();state.link=/^https:\/\//i.test(query)?query:'';feedback('Не нашли точный сеанс. Укажите название и дату вашего билета.');}});
-const venueSearch=autocomplete({inputId:'venue-query',resultsId:'venue-results',statusId:'venue-status',load:async query=>(await api('/venues?query='+encodeURIComponent(query))).venues,subtitle:item=>[item.city,state.favorites.includes(item.id)?'Уже в избранном':state.token?'Добавить в избранное':'Откройте MAX для подписки'].filter(Boolean).join(' · '),select:item=>{if(!state.venues.some(row=>row.id===item.id))state.venues.push(item);void action($('venue-find'),()=>setFavorite(item.id,true));},onInput:()=>feedback(''),loadingText:'Ищем площадки…',emptyText:'Площадка не найдена. Попробуйте часть названия или другой город.'});
+const eventSearch=autocomplete({inputId:'query',resultsId:'results',statusId:'search-status',load:async query=>(await api('/search',{query})).events,preview:hostedOnPages?async query=>(await publicPreview(new URL('/search',location.origin),{query})).events:undefined,subtitle:item=>when(item.sessions[0])+' · сеансов: '+item.sessions.length,select:item=>{openTicket(item);$('session').focus();},onInput:()=>{feedback('');$('ticket-form').hidden=true;},loadingText:'Ищем события…',emptyText:'В каталоге нет будущих сеансов по этому названию. Можно указать событие вручную.',onEmptySubmit:query=>{openTicket();state.link=/^https:\/\//i.test(query)?query:'';feedback('Не нашли точный сеанс. Укажите название и дату вашего билета.');}});
+const venueSearch=autocomplete({inputId:'venue-query',resultsId:'venue-results',statusId:'venue-status',load:async query=>(await api('/venues?query='+encodeURIComponent(query))).venues,preview:hostedOnPages?async query=>(await publicPreview(new URL('/venues?query='+encodeURIComponent(query),location.origin))).venues:undefined,subtitle:item=>[item.city,state.favorites.includes(item.id)?'Уже в избранном':state.token?'Добавить в избранное':'Откройте MAX для подписки'].filter(Boolean).join(' · '),select:item=>{if(!state.venues.some(row=>row.id===item.id))state.venues.push(item);void action($('venue-find'),()=>setFavorite(item.id,true));},onInput:()=>feedback(''),loadingText:'Ищем площадки…',emptyText:'Площадка не найдена. Попробуйте часть названия или другой город.'});
 $('search-form').addEventListener('submit',event=>{event.preventDefault();if(!event.isComposing){feedback('');void action($('find'),()=>eventSearch.run(true));}});
 $('venue-search-form').addEventListener('submit',event=>{event.preventDefault();if(!event.isComposing){feedback('');void action($('venue-find'),()=>venueSearch.run(true));}});
 $('ticket-form').addEventListener('submit',event=>{
@@ -350,6 +375,7 @@ function getInitData(){
   if(window.MaxWebApp?.initData)return window.MaxWebApp.initData;
   try{
     const hash=new URLSearchParams(window.location.hash.replace(/^#/,''));
+    if(hash.getAll('WebAppData').length===1)return hash.get('WebAppData');
     if(hash.get('tgWebAppData'))return hash.get('tgWebAppData');
     if(hash.get('maxWebAppData'))return hash.get('maxWebAppData');
     if(hash.get('initData'))return hash.get('initData');
@@ -383,32 +409,32 @@ function refreshApiBase(){
   })().finally(()=>{refreshingApiBase=null;});
   return refreshingApiBase;
 }
-async function start(){
-  for(const o of [window.WebApp, window.Telegram?.WebApp, window.Max?.WebApp, window.MaxWebApp]){
-    if(o?.ready){try{o.ready();}catch{}}
-  }
-  if(!window.WebApp&&window.Telegram?.WebApp)window.WebApp=window.Telegram.WebApp;
-  if(!window.WebApp&&window.Max?.WebApp)window.WebApp=window.Max.WebApp;
+function start(){
   if(hostedOnPages){
-    await refreshApiBase();
-    if(!apiBase)apiBase=httpsOrigin(readCache(localApiKey));
+    apiBase=httpsOrigin(readCache(localApiKey));
+    connectionReady=refreshApiBase().finally(()=>{connectionReady=null;});
   }else if(location.protocol==='http:'||location.protocol==='https:'){
     apiBase=location.origin;
   }
-  const initData=getInitData();
-  if(initData&&apiBase){
-    try{
-      const session=await api('/auth',{initData});
-      if(session?.token){
-        state.token=session.token;
-        writeCache(localTokenKey,session.token);
-        $('access').hidden=true;
-        $('start-notice').hidden=!session.needsStart;
+  function connectToMax(){
+    const initData=getInitData();
+    if(!initData||initData===launchData)return;
+    launchData=initData;
+    authorizing=(async()=>{
+      try{
+        const session=await api('/auth',{initData});
+        if(session?.token){
+          state.token=session.token;
+          writeCache(localTokenKey,session.token);
+          $('access').hidden=true;
+          $('start-notice').hidden=!session.needsStart;
+        }
+      }catch(error){
+        if(!state.token){$('access').textContent=error.message;$('access').hidden=false;}
       }
-    }catch(error){
-      if(!state.token){$('access').textContent=error.message;$('access').hidden=false;}
-    }
+    })().finally(()=>{authorizing=null;});
   }
-  await Promise.all([loadTickets(),loadVenues()]);
+  $('max-bridge').addEventListener('load',connectToMax,{once:true});
+  connectToMax();
 }
-void start();
+start();
