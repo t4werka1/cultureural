@@ -71,6 +71,39 @@ button:disabled {
   }
 }
 
+@supports (padding: max(0px, 1px)) {
+  .app-frame {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(40px, env(safe-area-inset-bottom, 0px));
+  }
+  @media (max-width: 380px) {
+    .app-frame {
+      padding-inline: max(10px, env(safe-area-inset-left, 0px)) max(10px, env(safe-area-inset-right, 0px));
+      padding-bottom: max(30px, env(safe-area-inset-bottom, 0px));
+    }
+  }
+}
+@media (pointer: coarse) {
+  .tab-navigation .tab-btn {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+  }
+  .app-frame input[type=text],
+  .app-frame input[type=datetime-local],
+  .app-frame select {
+    font-size: max(16px, 1rem);
+  }
+  .app-frame .hero-pass,
+  .app-frame .form-card,
+  .app-frame .ticket-top,
+  .app-frame .ticket-bottom {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* === ШАПКА === */
 .brand-header {
   display: flex;
@@ -192,7 +225,7 @@ button:disabled {
 /* === СЕГМЕНТИРОВАННАЯ ВЕРХНЯЯ НАВИГАЦИЯ (АДАПТИВНАЯ GRID) === */
 .tab-navigation {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   background: rgba(255, 255, 255, 0.06);
   padding: 4px;
