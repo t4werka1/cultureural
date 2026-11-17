@@ -89,6 +89,20 @@ async function api(path,body,method,isRetry=false){
   }
   return value;
 }
+const SECTION_INFO = {
+  add: {
+    title: 'Добавить билет',
+    meta: 'Поиск событий по афише или добавление вручную, выбор сеанса и настройка напоминаний в MAX.'
+  },
+  tickets: {
+    title: 'Мои билеты',
+    meta: 'Управление сохранёнными билетами, просмотр времени сеансов и контроль статуса напоминаний в MAX.'
+  },
+  venues: {
+    title: 'Площадки',
+    meta: 'Каталог театров, музеев и филармоний Южного Урала. Выбирайте любимые площадки для получения свежих анонсов в MAX.'
+  }
+};
 function view(name){
   for(const key of ['add','tickets','venues']){
     $(key+'-view').hidden=key!==name;
@@ -100,6 +114,11 @@ function view(name){
       if(key===name)nav.setAttribute('aria-current','page');
     }
   }
+  const info=SECTION_INFO[name]||SECTION_INFO.add;
+  const metaEl=$('pass-meta');
+  if(metaEl)metaEl.textContent=info.meta;
+  const titleEl=document.querySelector('.pass-title');
+  if(titleEl)titleEl.textContent=info.title;
   feedback('');
   window.scrollTo({top:0,behavior:'instant'});
 }
@@ -159,7 +178,7 @@ function renderTickets(){
   if(!items.length){
     const empty=element('div',undefined,'empty');
     const icon=element('div',undefined,'empty-icon');
-    const iconImg=element('img');iconImg.src='./lizard-harp.svg';iconImg.width=36;iconImg.height=40;iconImg.alt='';
+    const iconImg=element('img');iconImg.src='./mincult-logo.png';iconImg.width=36;iconImg.height=40;iconImg.alt='Министерство культуры';
     icon.append(iconImg);
     empty.append(icon);
     if(filter==='tickets'){
