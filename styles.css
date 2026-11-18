@@ -113,9 +113,9 @@ button:disabled {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 .brand-logotype {
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
   letter-spacing: -0.02em;
   color: #fff;
   white-space: nowrap;
@@ -222,7 +222,7 @@ button:disabled {
 }
 @media (max-width: 380px) {
   .brand-logotype {
-    font-size: 18px;
+    font-size: 20px;
   }
   .hero-pass {
     padding: 12px 14px;
