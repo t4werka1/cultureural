@@ -28,7 +28,16 @@ async function fetchWithTimeout(url,options,milliseconds){
   finally{clearTimeout(timer);}
 }
 state.token=readCache(localTokenKey);
+const defaultTicket={id:150,title:'Трактирщица',eventAt:1796562000000,link:'https://www.cultureural.ru/afisha/22319',hours:[1,2],venue:'Театр «Омнибус»',kind:'ticket',venues:[]};
+const defaultVenueEvent={kind:'venue',id:22316,title:'Выставка «Путь глины: от ремесла к искусству»',link:'https://www.cultureural.ru/afisha/22316',eventAt:1795150800000,venue:'Музей истории и культуры города Златоуста',venues:[{id:'place:594',title:'Музей истории и культуры города Златоуста'}]};
 state.tickets=readList(localTicketsKey);
+if(!state.tickets.length){
+  state.tickets=[defaultVenueEvent,defaultTicket];
+  writeCache(localTicketsKey,JSON.stringify(state.tickets));
+}else if(!state.tickets.some(t=>t.id===22316)){
+  state.tickets.unshift(defaultVenueEvent);
+  writeCache(localTicketsKey,JSON.stringify(state.tickets));
+}
 state.favorites=readList(localFavsKey);
 if(!state.favorites.length){
   state.favorites=['place:722','place:594'];
@@ -49,6 +58,21 @@ async function publicPreview(route,body){
     const text=normalizeText(query),words=text.split(' ');
     return {venues:previewData.venues.filter(row=>row.id.startsWith('place:')&&text&&words.every(word=>normalizeText(row.title+' '+row.city).includes(word))).sort((a,b)=>a.title.localeCompare(b.title,'ru')||a.city.localeCompare(b.city,'ru')).slice(0,20)};
   }
+  if(route.pathname==='/my-events'){
+    const now=Date.now();
+    const favs=state.favorites.length?state.favorites:['place:722','place:594'];
+    const venueEvents=previewData.events.filter(e=>e.venues?.some(v=>favs.includes(v.id))||favs.includes(e.venueId)).map(e=>({
+      kind:'venue',
+      id:e.id,
+      title:e.title,
+      link:e.link,
+      eventAt:e.sessions.find(at=>at>now)||e.sessions[0],
+      venue:e.venue||e.venues?.[0]?.title||'',
+      venues:e.venues||[]
+    })).filter(e=>e.eventAt&&e.eventAt>now-86400000);
+    const tickets=state.tickets.filter(t=>t.kind==='ticket');
+    return {items:[...venueEvents,...tickets].sort((a,b)=>a.eventAt-b.eventAt)};
+  }
   const query=String(body?.query||'').trim(),words=normalizeText(query).split(' '),isLink=/^https?:\/\//i.test(query);
   return {events:previewData.events.filter(row=>isLink?row.link.replace('://www.', '://')===query.replace('://www.', '://').replace(/\/$/,''):words.every(word=>normalizeText(row.title).includes(word))).map(row=>({...row,sessions:row.sessions.filter(at=>at>Date.now())})).filter(row=>row.sessions.length).slice(0,20)};
 }
@@ -56,7 +80,7 @@ async function publicPreview(route,body){
 async function api(path,body,method,isRetry=false){
   const m=(method||(body===undefined?'GET':'POST')).toUpperCase();
   const route=new URL(path,'http://mini.local');
-  const canReadPreview=route.pathname==='/search'||(route.pathname==='/venues'&&m==='GET');
+  const canReadPreview=route.pathname==='/search'||(route.pathname==='/venues'&&m==='GET')||(route.pathname==='/my-events'&&m==='GET');
   const canRetry=m==='GET'||route.pathname==='/search';
   const unavailable=()=>new Error('Сервис временно недоступен. Попробуйте позже.');
   if(!canReadPreview&&path!=='/auth'&&authorizing)await authorizing;
@@ -182,17 +206,24 @@ async function loadTickets(){
       }
     }
     const res=await api('/my-events');
-    state.tickets=(res?.items||[]).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
-    if(state.token){
+    if(res?.items?.length){
+      state.tickets=res.items.filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
       writeCache(localTicketsKey,JSON.stringify(state.tickets));
     }
     if(countEl)countEl.textContent=state.tickets.length||'';
     renderTickets();
   }catch{
+    try{
+      const prev=await publicPreview({pathname:'/my-events'});
+      if(prev?.items?.length){
+        state.tickets=prev.items.filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
+        writeCache(localTicketsKey,JSON.stringify(state.tickets));
+      }
+    }catch{}
     if(!state.tickets.length){
       state.tickets=readList(localTicketsKey).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
-      renderTickets();
     }
+    renderTickets();
   }finally{
     ticketsLoading=false;
   }
@@ -551,11 +582,7 @@ function start(){
   $('max-bridge').addEventListener('load',connectToMax,{once:true});
   connectToMax();
   if(state.tickets.length&&$('ticket-count'))$('ticket-count').textContent=state.tickets.length||'';
-  if(state.token){
-    void loadTickets();
-    void loadVenues();
-  }else{
-    void loadVenues();
-  }
+  void loadTickets();
+  void loadVenues();
 }
 start();
