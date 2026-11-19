@@ -5,26 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#170c66">
 <title>События и билеты · Метеора</title>
-<link rel="stylesheet" href="./styles.css?v=20261118">
+<link rel="stylesheet" href="./styles.css?v=20261119">
 <script async id="max-bridge" src="https://st.max.ru/js/max-web-app.js"></script>
-<script defer src="./app.js?v=20261118"></script>
+<script defer src="./app.js?v=20261119"></script>
 </head>
 <body>
   <div class="app-frame" id="app-container">
-    <!-- Фирменная шапка с гербом Министерства культуры Челябинской области -->
+    <!-- Фирменная шапка: ящерка на арфе слева от названия -->
     <header class="brand-header">
-      <div class="brand-identity">
-        <div class="brand-logotype">Метеора<span class="brand-dot">.</span></div>
-        <div class="brand-capital-tag">
-          <span>Челябинск</span>
-          <span>•</span>
-          <span>Культурная столица</span>
-          <span class="brand-year">2027</span>
+      <div class="brand-header-group">
+        <div class="lizard-emblem" title="Культура и искусство Южного Урала">
+          <img src="./lizard-harp.svg" width="38" height="42" alt="Культура и искусство Южного Урала">
         </div>
-      </div>
-      <div class="brand-emblems">
-        <div class="mincult-emblem" title="Министерство культуры Челябинской области">
-          <img src="./mincult-logo.png" width="38" height="42" alt="Министерство культуры Челябинской области">
+        <div class="brand-identity">
+          <div class="brand-logotype">Метеора<span class="brand-dot">.</span></div>
+          <div class="brand-subtitle">Культура и искусство Южного Урала</div>
         </div>
       </div>
     </header>
@@ -32,16 +27,23 @@
     <div id="access" class="notice" role="status" hidden></div>
     <div id="start-notice" class="notice" hidden>Чтобы получать напоминания, нажмите «Начать» в <a href="https://max.ru/meteora_ural_bot" target="_blank" rel="noopener noreferrer">чате с ботом</a>. Затем вернитесь сюда.</div>
 
-    <!-- Карточка-визитка: Культурный маршрут 2027 с прозрачной буквой К -->
+    <!-- Баннер: Афиша Культурной столицы 2027 со ссылкой на Министерство культуры -->
+    <a class="capital-banner" href="https://mincult.gov74.ru/mincult/activities/kulstol.htm" target="_blank" rel="noopener" title="Культурная столица 2027 — Министерство культуры Челябинской области">
+      <div class="banner-content">
+        <div class="banner-heading">Афиша</div>
+        <div class="banner-subheading">Челябинск · Культурная столица <span class="banner-year-accent">2027</span></div>
+      </div>
+      <div class="k-seal" title="Символ Культурной столицы">
+        <img src="./brand-k.png" width="48" height="48" alt="Символ К">
+      </div>
+    </a>
+
+    <!-- Карточка активного раздела -->
     <section class="hero-pass">
       <div class="pass-inner">
         <div class="pass-content">
-          <span class="pass-eyebrow">ВАШ КУЛЬТУРНЫЙ МАРШРУТ</span>
           <h1 class="pass-title">Добавить билет</h1>
           <p class="pass-meta" id="pass-meta">Поиск событий по афише или добавление вручную, выбор сеанса и настройка напоминаний в MAX.</p>
-        </div>
-        <div class="pass-mark-seal" title="Официальный символ Челябинск 2027 — буква К">
-          <img src="./brand-k.png" width="359" height="327" alt="Знак Культурной столицы">
         </div>
       </div>
     </section>
@@ -138,7 +140,7 @@
 
         <aside class="how-it-works">
           <span class="mini-icon" aria-hidden="true">
-            <img src="./mincult-logo.png" width="26" height="28" alt="Министерство культуры">
+            <img src="./lizard-harp.svg" width="26" height="28" alt="Культура и искусство Южного Урала">
           </span>
           <p>Напоминание придёт сообщением в MAX.</p>
         </aside>

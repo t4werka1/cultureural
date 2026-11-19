@@ -178,7 +178,7 @@ function renderTickets(){
   if(!items.length){
     const empty=element('div',undefined,'empty');
     const icon=element('div',undefined,'empty-icon');
-    const iconImg=element('img');iconImg.src='./mincult-logo.png';iconImg.width=36;iconImg.height=40;iconImg.alt='Министерство культуры';
+    const iconImg=element('img');iconImg.src='./lizard-harp.svg';iconImg.width=36;iconImg.height=40;iconImg.alt='Культура и искусство Южного Урала';
     icon.append(iconImg);
     empty.append(icon);
     if(filter==='tickets'){
@@ -276,7 +276,6 @@ async function loadVenues(){
 }
 function renderVenues(){
   $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;$('venues-list').replaceChildren();
-  if(!state.favorites.length)$('venues-list').append(element('p','Введите название или город и выберите площадку из подсказок. Избранные площадки появятся здесь.','venues-empty'));
   state.favorites.map(id=>state.venues.find(row=>row.id===id)||{id,title:'Площадка №'+id.replace('place:',''),city:'',available:false}).forEach((venue,index)=>{
     const card=element('label',undefined,'venue-card'),number=element('span',String(index+1).padStart(2,'0'),'venue-number'),copy=element('span',undefined,'venue-copy');
     copy.append(element('small',venue.city),element('strong',venue.title));
