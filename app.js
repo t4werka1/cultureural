@@ -30,6 +30,11 @@ async function fetchWithTimeout(url,options,milliseconds){
 state.token=readCache(localTokenKey);
 state.tickets=readList(localTicketsKey);
 state.favorites=readList(localFavsKey);
+const corrupt18=['drama','opera','philharmonic','youth','puppets','history','art','magnit-drama','magnit-opera','omnibus','place:478','place:395','place:729','place:391','place:481','place:485','place:540','place:396'];
+if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
+  state.favorites=[];
+  writeCache(localFavsKey,JSON.stringify([]));
+}
 state.venues=readList(localVenuesKey);
 
 async function publicPreview(route,body){
@@ -283,7 +288,13 @@ function renderTickets(){
 }
 let venuesLoading=false;
 async function loadVenues(){
-  if(!state.favorites.length)state.favorites=readList(localFavsKey);
+  if(!state.favorites.length){
+    state.favorites=readList(localFavsKey);
+    if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
+      state.favorites=[];
+      writeCache(localFavsKey,JSON.stringify([]));
+    }
+  }
   if(!state.venues.length)state.venues=readList(localVenuesKey);
   renderVenues();
 
@@ -302,7 +313,13 @@ async function loadVenues(){
     }
     renderVenues();
   }catch{
-    if(!state.favorites.length)state.favorites=readList(localFavsKey);
+    if(!state.favorites.length){
+      state.favorites=readList(localFavsKey);
+      if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
+        state.favorites=[];
+        writeCache(localFavsKey,JSON.stringify([]));
+      }
+    }
     renderVenues();
   }finally{
     venuesLoading=false;
