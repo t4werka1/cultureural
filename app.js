@@ -469,7 +469,9 @@ function start(){
           void loadVenues();
         }
       }catch(error){
-        if(!state.token){$('access').textContent=error.message;$('access').hidden=false;}
+        console.warn('MAX authorization bypassed/offline fallback:', error.message);
+        $('access').hidden=true;
+        void loadVenues();
       }
     })().finally(()=>{authorizing=null;});
   }
@@ -478,6 +480,8 @@ function start(){
   if(state.tickets.length&&$('ticket-count'))$('ticket-count').textContent=state.tickets.length||'';
   if(state.token){
     void loadTickets();
+    void loadVenues();
+  }else{
     void loadVenues();
   }
 }
