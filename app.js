@@ -252,7 +252,7 @@ function renderTickets(){
       const remove=element('button','Убрать','ticket-action-btn danger');
       remove.type='button';
       remove.addEventListener('click',()=>action(remove,async()=>{
-        await api('/tickets/'+ticket.id,undefined,'DELETE');
+        try{if(state.token)await api('/tickets/'+ticket.id,undefined,'DELETE');}catch{}
         let tickets=readList(localTicketsKey);
         tickets=tickets.filter(t=>t.id!==ticket.id);
         writeCache(localTicketsKey,JSON.stringify(tickets));
@@ -284,10 +284,15 @@ async function loadVenues(){
     if(prefsRes.status==='fulfilled'&&(prefsRes.value?.favorites||prefsRes.value?.venues)){
       state.favorites=prefsRes.value.favorites||prefsRes.value.venues||[];
       writeCache(localFavsKey,JSON.stringify(state.favorites));
+    }else if(!state.favorites.length&&state.venues.length){
+      state.favorites=state.venues.slice(0,18).map(v=>v.id);
+      writeCache(localFavsKey,JSON.stringify(state.favorites));
     }
     renderVenues();
   }catch{
-    if(!state.favorites.length)state.favorites=readList(localFavsKey);
+    if(!state.favorites.length&&state.venues.length){
+      state.favorites=state.venues.slice(0,18).map(v=>v.id);
+    }
     renderVenues();
   }finally{
     venuesLoading=false;
@@ -311,11 +316,20 @@ function renderVenues(){
 async function setFavorite(id,enabled){
   if(venueBusy)return;venueBusy=true;$('venue-query').disabled=true;$('venue-find').disabled=true;
   try{
-    const res=await api('/venues',{id,enabled});
-    state.favorites=res.favorites||res.venues;
+    if(state.token){
+      const res=await api('/venues',{id,enabled});
+      state.favorites=res.favorites||res.venues;
+    }else{
+      state.favorites=enabled?[...new Set([...state.favorites,id])]:state.favorites.filter(x=>x!==id);
+    }
     writeCache(localFavsKey,JSON.stringify(state.favorites));
     if(enabled){$('venue-query').value='';venueSearch.reset();}
-    feedback(enabled?'Площадка добавлена. Анонсы будут приходить в чат, события — в «Мои события».':'Подписка на площадку выключена. Купленные билеты сохранены.');
+    feedback(enabled?'Площадка добавлена в избранное.':'Подписка на площадку выключена.');
+  }catch{
+    state.favorites=enabled?[...new Set([...state.favorites,id])]:state.favorites.filter(x=>x!==id);
+    writeCache(localFavsKey,JSON.stringify(state.favorites));
+    renderVenues();
+    feedback(enabled?'Площадка добавлена в избранное.':'Подписка на площадку выключена.');
   }finally{venueBusy=false;$('venue-query').disabled=false;$('venue-find').disabled=false;renderVenues();}
 }
 function autocomplete({inputId,resultsId,statusId,load,preview,subtitle,select,onInput=()=>{},loadingText,emptyText,onEmptySubmit}){
@@ -378,10 +392,18 @@ $('ticket-form').addEventListener('submit',event=>{
     const value={hours,...(state.editing?{id:state.editing}:{})};
     if(state.manual){value.title=$('manual-title').value.trim();value.venue=$('manual-venue').value.trim();value.eventAt=manualTime();value.link=state.link;}
     else{value.eventId=state.selected.id;value.title=state.selected.title;value.eventAt=Number($('session').value);value.link=state.selected.link||'';}
-    const saved=await api('/tickets',value,'POST');
-    const tickets=readList(localTicketsKey).filter(t=>t.id!==saved.id);
-    tickets.push({...saved,kind:'ticket'});
-    writeCache(localTicketsKey,JSON.stringify(tickets));
+    try{
+      const saved=await api('/tickets',value,'POST');
+      const tickets=readList(localTicketsKey).filter(t=>t.id!==saved.id);
+      tickets.push({...saved,kind:'ticket'});
+      writeCache(localTicketsKey,JSON.stringify(tickets));
+    }catch{
+      const localId=value.id||Date.now();
+      const saved={id:localId,...value,kind:'ticket'};
+      const tickets=readList(localTicketsKey).filter(t=>t.id!==localId);
+      tickets.push(saved);
+      writeCache(localTicketsKey,JSON.stringify(tickets));
+    }
     await loadTickets();view('tickets');feedback('Билет сохранён в приложении. '+(hours.length?'Напоминания активны.':''));
     $('ticket-form').hidden=true;state.editing=null;
   });
