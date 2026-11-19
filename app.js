@@ -28,21 +28,8 @@ async function fetchWithTimeout(url,options,milliseconds){
   finally{clearTimeout(timer);}
 }
 state.token=readCache(localTokenKey);
-const defaultTicket={id:150,title:'Трактирщица',eventAt:1796562000000,link:'https://www.cultureural.ru/afisha/22319',hours:[1,2],venue:'Театр «Омнибус»',kind:'ticket',venues:[]};
-const defaultVenueEvent={kind:'venue',id:22316,title:'Выставка «Путь глины: от ремесла к искусству»',link:'https://www.cultureural.ru/afisha/22316',eventAt:1795150800000,venue:'Музей истории и культуры города Златоуста',venues:[{id:'place:594',title:'Музей истории и культуры города Златоуста'}]};
 state.tickets=readList(localTicketsKey);
-if(!state.tickets.length){
-  state.tickets=[defaultVenueEvent,defaultTicket];
-  writeCache(localTicketsKey,JSON.stringify(state.tickets));
-}else if(!state.tickets.some(t=>t.id===22316)){
-  state.tickets.unshift(defaultVenueEvent);
-  writeCache(localTicketsKey,JSON.stringify(state.tickets));
-}
 state.favorites=readList(localFavsKey);
-if(!state.favorites.length){
-  state.favorites=['place:722','place:594'];
-  writeCache(localFavsKey,JSON.stringify(state.favorites));
-}
 state.venues=readList(localVenuesKey);
 
 async function publicPreview(route,body){
@@ -60,8 +47,8 @@ async function publicPreview(route,body){
   }
   if(route.pathname==='/my-events'){
     const now=Date.now();
-    const favs=state.favorites.length?state.favorites:['place:722','place:594'];
-    const venueEvents=previewData.events.filter(e=>e.venues?.some(v=>favs.includes(v.id))||favs.includes(e.venueId)).map(e=>({
+    const favs=state.favorites;
+    const venueEvents=favs.length?previewData.events.filter(e=>e.venues?.some(v=>favs.includes(v.id))||favs.includes(e.venueId)).map(e=>({
       kind:'venue',
       id:e.id,
       title:e.title,
@@ -69,7 +56,7 @@ async function publicPreview(route,body){
       eventAt:e.sessions.find(at=>at>now)||e.sessions[0],
       venue:e.venue||e.venues?.[0]?.title||'',
       venues:e.venues||[]
-    })).filter(e=>e.eventAt&&e.eventAt>now-86400000);
+    })).filter(e=>e.eventAt&&e.eventAt>now-86400000):[];
     const tickets=state.tickets.filter(t=>t.kind==='ticket');
     return {items:[...venueEvents,...tickets].sort((a,b)=>a.eventAt-b.eventAt)};
   }
@@ -91,7 +78,7 @@ async function api(path,body,method,isRetry=false){
   }
   let response;
   try{
-    response=await fetchWithTimeout(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json','bypass-tunnel-reminder':'true',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body)},10000);
+    response=await fetchWithTimeout(apiBase+'/mini/v1'+path,{method:m,headers:{'Content-Type':'application/json','bypass-tunnel-reminder':'true','ngrok-skip-browser-warning':'true',...(state.token?{Authorization:'Bearer '+state.token}:{})},body:body===undefined?undefined:JSON.stringify(body)},10000);
   }catch{
     if(!isRetry&&canRetry&&await refreshApiBase())return api(path,body,method,true);
     if(canReadPreview)return publicPreview(route,body);
@@ -320,10 +307,6 @@ let venuesLoading=false;
 async function loadVenues(){
   if(!state.favorites.length){
     state.favorites=readList(localFavsKey);
-    if(!state.favorites.length){
-      state.favorites=['place:722','place:594'];
-      writeCache(localFavsKey,JSON.stringify(state.favorites));
-    }
   }
   if(!state.venues.length){
     state.venues=readList(localVenuesKey);
@@ -345,7 +328,7 @@ async function loadVenues(){
     if(authorizing)await authorizing;
     if(!state.token){
       const initData=getInitData();
-      if(initData){
+      if(initData&&!authorizing){
         try{
           const session=await api('/auth',{initData});
           if(session?.token){
@@ -370,9 +353,6 @@ async function loadVenues(){
     }
     renderVenues();
   }catch{
-    if(!state.favorites.length){
-      state.favorites=readList(localFavsKey);
-    }
     renderVenues();
   }finally{
     venuesLoading=false;
@@ -398,18 +378,15 @@ async function setFavorite(id,enabled){
   try{
     if(state.token){
       const res=await api('/venues',{id,enabled});
-      state.favorites=res.favorites||res.venues;
+      state.favorites=Array.isArray(res?.favorites)?res.favorites:(Array.isArray(res?.venues)?res.venues:state.favorites);
     }else{
       state.favorites=enabled?[...new Set([...state.favorites,id])]:state.favorites.filter(x=>x!==id);
     }
     writeCache(localFavsKey,JSON.stringify(state.favorites));
     if(enabled){$('venue-query').value='';venueSearch.reset();}
     feedback(enabled?'Площадка добавлена в избранное.':'Подписка на площадку выключена.');
-  }catch{
-    state.favorites=enabled?[...new Set([...state.favorites,id])]:state.favorites.filter(x=>x!==id);
-    writeCache(localFavsKey,JSON.stringify(state.favorites));
-    renderVenues();
-    feedback(enabled?'Площадка добавлена в избранное.':'Подписка на площадку выключена.');
+  }catch(err){
+    feedback(err.message||'Не удалось обновить подписку на площадку.',true);
   }finally{venueBusy=false;$('venue-query').disabled=false;$('venue-find').disabled=false;renderVenues();}
 }
 function autocomplete({inputId,resultsId,statusId,load,preview,subtitle,select,onInput=()=>{},loadingText,emptyText,onEmptySubmit}){
@@ -569,12 +546,12 @@ function start(){
           $('start-notice').hidden=!session.needsStart;
           venuesLoading=false;
           ticketsLoading=false;
-          void loadTickets();
-          void loadVenues();
+          await Promise.all([loadTickets(), loadVenues()]);
         }
       }catch(error){
         console.warn('MAX authorization bypassed/offline fallback:', error.message);
         $('access').hidden=true;
+        void loadTickets();
         void loadVenues();
       }
     })().finally(()=>{authorizing=null;});
@@ -582,7 +559,9 @@ function start(){
   $('max-bridge').addEventListener('load',connectToMax,{once:true});
   connectToMax();
   if(state.tickets.length&&$('ticket-count'))$('ticket-count').textContent=state.tickets.length||'';
-  void loadTickets();
-  void loadVenues();
+  if(!getInitData()){
+    void loadTickets();
+    void loadVenues();
+  }
 }
 start();
