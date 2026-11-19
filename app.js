@@ -8,6 +8,7 @@ function element(tag,text,className){const node=document.createElement(tag);if(t
 function feedback(text,isError=false){const node=$('feedback');node.textContent=text;node.classList.toggle('error',isError);node.hidden=!text;if(isError)node.focus();}
 const localTicketsKey='cultureural_tickets_v1';
 const localFavsKey='cultureural_favorites_v1';
+const localVenuesKey='cultureural_venues_v1';
 const localTokenKey='cultureural_token_v1';
 const localApiKey='cultureural_api_base_v1';
 function readCache(key){
@@ -27,6 +28,9 @@ async function fetchWithTimeout(url,options,milliseconds){
   finally{clearTimeout(timer);}
 }
 state.token=readCache(localTokenKey);
+state.tickets=readList(localTicketsKey);
+state.favorites=readList(localFavsKey);
+state.venues=readList(localVenuesKey);
 
 async function publicPreview(route,body){
   previewRequest??=(async()=>{
@@ -147,22 +151,33 @@ function openTicket(event=null,ticket=null){
 }
 let ticketsLoading=false;
 async function loadTickets(){
+  if(!state.tickets.length){
+    state.tickets=readList(localTicketsKey);
+  }
+  const cutoff=Date.now()-15*60*1000;
+  state.tickets=state.tickets.filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
+  const countEl=$('ticket-count');
+  if(countEl)countEl.textContent=state.tickets.length||'';
+  renderTickets();
+
   if(ticketsLoading)return;
   ticketsLoading=true;
   try{
     const res=await api('/my-events');
-    const cutoff=Date.now()-15*60*1000;
     state.tickets=(res?.items||[]).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
     if(state.token){
-      writeCache(localTicketsKey,JSON.stringify(state.tickets.filter(row=>row.kind==='ticket')));
+      writeCache(localTicketsKey,JSON.stringify(state.tickets));
     }
+    if(countEl)countEl.textContent=state.tickets.length||'';
+    renderTickets();
   }catch{
-    state.tickets=readList(localTicketsKey);
+    if(!state.tickets.length){
+      state.tickets=readList(localTicketsKey).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
+      renderTickets();
+    }
   }finally{
     ticketsLoading=false;
   }
-  $('ticket-count').textContent=state.tickets.length||'';
-  renderTickets();
 }
 const reminderText=hours=>hours.length?'Напоминания: '+hours.map(hour=>hour===24?'за сутки':hour===1?'за час':'за '+new Intl.NumberFormat('ru-RU',{style:'unit',unit:'hour',unitDisplay:'long'}).format(hour)).join(', '):'Напоминания выключены';
 function renderTickets(){
@@ -254,25 +269,29 @@ function renderTickets(){
 }
 let venuesLoading=false;
 async function loadVenues(){
+  if(!state.favorites.length)state.favorites=readList(localFavsKey);
+  if(!state.venues.length)state.venues=readList(localVenuesKey);
+  renderVenues();
+
   if(venuesLoading)return;
   venuesLoading=true;
   try{
     const [catalogRes,prefsRes]=await Promise.allSettled([api('/venues'),api('/preferences')]);
     if(catalogRes.status==='fulfilled'&&catalogRes.value?.venues){
       state.venues=catalogRes.value.venues;
+      writeCache(localVenuesKey,JSON.stringify(state.venues));
     }
     if(prefsRes.status==='fulfilled'&&(prefsRes.value?.favorites||prefsRes.value?.venues)){
       state.favorites=prefsRes.value.favorites||prefsRes.value.venues||[];
       writeCache(localFavsKey,JSON.stringify(state.favorites));
-    }else if(!state.favorites.length){
-      state.favorites=readList(localFavsKey);
     }
+    renderVenues();
   }catch{
     if(!state.favorites.length)state.favorites=readList(localFavsKey);
+    renderVenues();
   }finally{
     venuesLoading=false;
   }
-  renderVenues();
 }
 function renderVenues(){
   $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;$('venues-list').replaceChildren();
@@ -446,6 +465,8 @@ function start(){
           writeCache(localTokenKey,session.token);
           $('access').hidden=true;
           $('start-notice').hidden=!session.needsStart;
+          void loadTickets();
+          void loadVenues();
         }
       }catch(error){
         if(!state.token){$('access').textContent=error.message;$('access').hidden=false;}
@@ -454,5 +475,10 @@ function start(){
   }
   $('max-bridge').addEventListener('load',connectToMax,{once:true});
   connectToMax();
+  if(state.tickets.length&&$('ticket-count'))$('ticket-count').textContent=state.tickets.length||'';
+  if(state.token){
+    void loadTickets();
+    void loadVenues();
+  }
 }
 start();
