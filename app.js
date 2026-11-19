@@ -30,11 +30,6 @@ async function fetchWithTimeout(url,options,milliseconds){
 state.token=readCache(localTokenKey);
 state.tickets=readList(localTicketsKey);
 state.favorites=readList(localFavsKey);
-const corrupt18=['drama','opera','philharmonic','youth','puppets','history','art','magnit-drama','magnit-opera','omnibus','place:478','place:395','place:729','place:391','place:481','place:485','place:540','place:396'];
-if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
-  state.favorites=[];
-  writeCache(localFavsKey,JSON.stringify([]));
-}
 state.venues=readList(localVenuesKey);
 
 async function publicPreview(route,body){
@@ -290,10 +285,6 @@ let venuesLoading=false;
 async function loadVenues(){
   if(!state.favorites.length){
     state.favorites=readList(localFavsKey);
-    if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
-      state.favorites=[];
-      writeCache(localFavsKey,JSON.stringify([]));
-    }
   }
   if(!state.venues.length)state.venues=readList(localVenuesKey);
   renderVenues();
@@ -301,7 +292,23 @@ async function loadVenues(){
   if(venuesLoading)return;
   venuesLoading=true;
   try{
-    const [catalogRes,prefsRes]=await Promise.allSettled([api('/venues'),api('/preferences')]);
+    if(authorizing)await authorizing;
+    if(!state.token){
+      const initData=getInitData();
+      if(initData){
+        try{
+          const session=await api('/auth',{initData});
+          if(session?.token){
+            state.token=session.token;
+            writeCache(localTokenKey,session.token);
+          }
+        }catch{}
+      }
+    }
+    const [catalogRes,prefsRes]=await Promise.allSettled([
+      api('/venues'),
+      state.token ? api('/preferences') : Promise.reject(new Error('no token'))
+    ]);
     if(catalogRes.status==='fulfilled'&&catalogRes.value?.venues){
       state.venues=catalogRes.value.venues;
       writeCache(localVenuesKey,JSON.stringify(state.venues));
@@ -315,10 +322,6 @@ async function loadVenues(){
   }catch{
     if(!state.favorites.length){
       state.favorites=readList(localFavsKey);
-      if(Array.isArray(state.favorites)&&state.favorites.length===18&&corrupt18.every(id=>state.favorites.includes(id))){
-        state.favorites=[];
-        writeCache(localFavsKey,JSON.stringify([]));
-      }
     }
     renderVenues();
   }finally{
@@ -514,6 +517,8 @@ function start(){
           writeCache(localTokenKey,session.token);
           $('access').hidden=true;
           $('start-notice').hidden=!session.needsStart;
+          venuesLoading=false;
+          ticketsLoading=false;
           void loadTickets();
           void loadVenues();
         }
