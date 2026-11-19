@@ -30,6 +30,10 @@ async function fetchWithTimeout(url,options,milliseconds){
 state.token=readCache(localTokenKey);
 state.tickets=readList(localTicketsKey);
 state.favorites=readList(localFavsKey);
+if(!state.favorites.length){
+  state.favorites=['place:722','place:594'];
+  writeCache(localFavsKey,JSON.stringify(state.favorites));
+}
 state.venues=readList(localVenuesKey);
 
 async function publicPreview(route,body){
@@ -285,8 +289,23 @@ let venuesLoading=false;
 async function loadVenues(){
   if(!state.favorites.length){
     state.favorites=readList(localFavsKey);
+    if(!state.favorites.length){
+      state.favorites=['place:722','place:594'];
+      writeCache(localFavsKey,JSON.stringify(state.favorites));
+    }
   }
-  if(!state.venues.length)state.venues=readList(localVenuesKey);
+  if(!state.venues.length){
+    state.venues=readList(localVenuesKey);
+    if(!state.venues.length){
+      try{
+        const prev=await publicPreview({pathname:'/venues',searchParams:new URLSearchParams()});
+        if(prev?.venues?.length){
+          state.venues=prev.venues;
+          writeCache(localVenuesKey,JSON.stringify(state.venues));
+        }
+      }catch{}
+    }
+  }
   renderVenues();
 
   if(venuesLoading)return;
