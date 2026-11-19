@@ -125,6 +125,8 @@ function view(name){
   if(titleEl)titleEl.textContent=info.title;
   feedback('');
   window.scrollTo({top:0,behavior:'instant'});
+  if(name==='tickets')void loadTickets();
+  if(name==='venues')void loadVenues();
 }
 async function action(button,fn){button.disabled=true;try{await fn();}catch(error){feedback(error.message,true);}finally{button.disabled=false;}}
 const manualTime=()=>state.manualAt&&$('manual-date').value===state.manualDate?state.manualAt:Date.parse($('manual-date').value+'+05:00');
@@ -163,6 +165,18 @@ async function loadTickets(){
   if(ticketsLoading)return;
   ticketsLoading=true;
   try{
+    if(!state.token){
+      const initData=getInitData();
+      if(initData){
+        try{
+          const session=await api('/auth',{initData});
+          if(session?.token){
+            state.token=session.token;
+            writeCache(localTokenKey,session.token);
+          }
+        }catch{}
+      }
+    }
     const res=await api('/my-events');
     state.tickets=(res?.items||[]).filter(row=>!(row.kind==='ticket'&&row.eventAt<=cutoff));
     if(state.token){
@@ -281,18 +295,14 @@ async function loadVenues(){
       state.venues=catalogRes.value.venues;
       writeCache(localVenuesKey,JSON.stringify(state.venues));
     }
-    if(prefsRes.status==='fulfilled'&&(prefsRes.value?.favorites||prefsRes.value?.venues)){
-      state.favorites=prefsRes.value.favorites||prefsRes.value.venues||[];
-      writeCache(localFavsKey,JSON.stringify(state.favorites));
-    }else if(!state.favorites.length&&state.venues.length){
-      state.favorites=state.venues.slice(0,18).map(v=>v.id);
+    if(prefsRes.status==='fulfilled'&&prefsRes.value){
+      const serverFavs=Array.isArray(prefsRes.value.favorites)?prefsRes.value.favorites:(Array.isArray(prefsRes.value.venues)?prefsRes.value.venues:[]);
+      state.favorites=serverFavs;
       writeCache(localFavsKey,JSON.stringify(state.favorites));
     }
     renderVenues();
   }catch{
-    if(!state.favorites.length&&state.venues.length){
-      state.favorites=state.venues.slice(0,18).map(v=>v.id);
-    }
+    if(!state.favorites.length)state.favorites=readList(localFavsKey);
     renderVenues();
   }finally{
     venuesLoading=false;
