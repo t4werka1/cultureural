@@ -68,7 +68,7 @@ async function api(path,body,method,isRetry=false){
   const m=(method||(body===undefined?'GET':'POST')).toUpperCase();
   const route=new URL(path,'http://mini.local');
   const canReadPreview=route.pathname==='/search'||(route.pathname==='/venues'&&m==='GET')||(route.pathname==='/my-events'&&m==='GET');
-  const canRetry=m==='GET'||route.pathname==='/search';
+  const canRetry=m==='GET'||route.pathname==='/search'||route.pathname==='/auth';
   const unavailable=()=>new Error('Сервис временно недоступен. Попробуйте позже.');
   if(!canReadPreview&&path!=='/auth'&&authorizing)await authorizing;
   if(connectionReady)await connectionReady;
@@ -153,17 +153,18 @@ function syncOffsets(){
 }
 function openTicket(event=null,ticket=null){
   resetSearch();
-  feedback('');state.selected=event;state.editing=ticket?.id||null;state.manual=!event;state.link=ticket?.link||'';
+  feedback('');state.selected=event;state.editing=ticket?.id||null;state.manual=!event;state.link=ticket?.link||event?.link||'';
   $('ticket-form').hidden=false;$('manual-fields').hidden=Boolean(event);$('sessions-field').hidden=!event;$('results').replaceChildren();
-  $('selected-title').textContent=event?.title||ticket?.title||'Добавить вручную';$('manual-title').value=ticket?.title||(!/^https?:\/\//i.test($('query').value)?$('query').value:'');
-  $('manual-venue').value=ticket?.venue||'';
+  $('selected-title').textContent=ticket?'Редактировать билет':(event?.title||'Добавить вручную');
+  $('manual-title').value=ticket?.title||(!/^https?:\/\//i.test($('query').value)?$('query').value:'');
+  $('manual-venue').value=ticket?.venue||event?.venue||'';
   $('manual-date').value=ticket?new Date(ticket.eventAt+5*3600000).toISOString().slice(0,16):'';
   state.manualAt=ticket?.eventAt||null;state.manualDate=$('manual-date').value;
   $('manual-title').required=!event;$('manual-date').required=!event;
   $('session').replaceChildren();for(const at of event?.sessions||[]){const option=element('option',when(at));option.value=at;$('session').append(option);}
   if(ticket&&event)$('session').value=ticket.eventAt;
   for(const input of document.querySelectorAll('input[name=hours]'))input.checked=(ticket?.hours||[2]).includes(Number(input.value));
-  $('save').textContent='Сохранить';
+  $('save').textContent=ticket?'Сохранить изменения':'Сохранить';
   $('manual-toggle').setAttribute('aria-expanded','true');syncOffsets();$('ticket-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
 let ticketsLoading=false;
@@ -180,9 +181,10 @@ async function loadTickets(){
   if(ticketsLoading)return;
   ticketsLoading=true;
   try{
+    if(authorizing)await authorizing;
     if(!state.token){
       const initData=getInitData();
-      if(initData){
+      if(initData&&!authorizing){
         try{
           const session=await api('/auth',{initData});
           if(session?.token){
@@ -285,7 +287,14 @@ function renderTickets(){
     if(!past){
       const edit=element('button',isTicket?'Изменить':'Я купил билет','ticket-action-btn edit');
       edit.type='button';
-      edit.addEventListener('click',()=>{view('add');if(isTicket)openTicket(null,ticket);else openTicket({id:ticket.id,title:ticket.title,sessions:[ticket.eventAt]});});
+      edit.addEventListener('click',()=>{
+        view('add');
+        if(isTicket){
+          openTicket(null,ticket);
+        }else{
+          openTicket({id:ticket.id,title:ticket.title,link:ticket.link,venue:ticket.venue,sessions:[ticket.eventAt]});
+        }
+      });
       actions.append(edit);
     }
     if(ticket.link){
@@ -297,7 +306,10 @@ function renderTickets(){
       const remove=element('button','Убрать','ticket-action-btn danger');
       remove.type='button';
       remove.addEventListener('click',()=>action(remove,async()=>{
-        try{if(state.token)await api('/tickets/'+ticket.id,undefined,'DELETE');}catch{}
+        if(state.token){
+          try{await api('/tickets/'+ticket.id,undefined,'DELETE');}
+          catch(err){console.warn('Server ticket delete failed:', err.message);}
+        }
         state.tickets=state.tickets.filter(t=>t.id!==ticket.id);
         let tickets=readList(localTicketsKey).filter(t=>t.id!==ticket.id);
         writeCache(localTicketsKey,JSON.stringify(tickets));
@@ -368,7 +380,18 @@ async function loadVenues(){
   }
 }
 function renderVenues(){
-  $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;$('venues-list').replaceChildren();
+  $('venue-count').textContent=`Выбрано: ${state.favorites.length}`;
+  $('venues-list').replaceChildren();
+  if(!state.favorites.length){
+    const empty=element('div',undefined,'venues-empty-hint');
+    empty.style.textAlign='center';
+    empty.style.padding='24px 16px';
+    empty.style.color='var(--text-muted, #8e8ea0)';
+    empty.style.fontSize='14px';
+    empty.textContent='Вы пока не выбрали ни одной площадки. Найдите любимый театр или музей через поиск выше, чтобы получать анонсы в MAX.';
+    $('venues-list').append(empty);
+    return;
+  }
   state.favorites.map(id=>state.venues.find(row=>row.id===id)||{id,title:'Площадка №'+id.replace('place:',''),city:'',available:false}).forEach((venue,index)=>{
     const card=element('label',undefined,'venue-card'),number=element('span',String(index+1).padStart(2,'0'),'venue-number'),copy=element('span',undefined,'venue-copy');
     copy.append(element('small',venue.city),element('strong',venue.title));
@@ -457,26 +480,61 @@ $('ticket-form').addEventListener('submit',event=>{
   event.preventDefault();action($('save'),async()=>{
     const hours=[...document.querySelectorAll('input[name=hours]:checked:not(:disabled)')].map(input=>Number(input.value));
     const value={hours,...(state.editing?{id:state.editing}:{})};
-    if(state.manual){value.title=$('manual-title').value.trim();value.venue=$('manual-venue').value.trim();value.eventAt=manualTime();value.link=state.link;}
-    else{value.eventId=state.selected.id;value.title=state.selected.title;value.eventAt=Number($('session').value);value.link=state.selected.link||'';}
-    try{
-      const saved=await api('/tickets',value,'POST');
-      const tickets=readList(localTicketsKey).filter(t=>t.id!==saved.id);
-      tickets.push({...saved,kind:'ticket'});
-      writeCache(localTicketsKey,JSON.stringify(tickets));
-    }catch{
+    if(state.manual){
+      const eventAt=manualTime();
+      if(!Number.isFinite(eventAt)||isNaN(eventAt)){
+        feedback('Укажите корректную дату и время сеанса.',true);
+        return;
+      }
+      if(eventAt<=Date.now()){
+        feedback('Время сеанса уже прошло. Укажите дату в будущем.',true);
+        return;
+      }
+      value.title=$('manual-title').value.trim();
+      value.venue=$('manual-venue').value.trim();
+      value.eventAt=eventAt;
+      value.link=state.link;
+    }else{
+      value.eventId=state.selected.id;
+      value.title=state.selected.title;
+      value.eventAt=Number($('session').value);
+      value.link=state.selected.link||'';
+    }
+    if(state.token){
+      try{
+        const saved=await api('/tickets',value,'POST');
+        const tickets=readList(localTicketsKey).filter(t=>t.id!==saved.id);
+        tickets.push({...saved,kind:'ticket'});
+        writeCache(localTicketsKey,JSON.stringify(tickets));
+      }catch(err){
+        feedback(err.message||'Не удалось сохранить билет на сервере.',true);
+        return;
+      }
+    }else{
       const localId=value.id||Date.now();
       const saved={id:localId,...value,kind:'ticket'};
       const tickets=readList(localTicketsKey).filter(t=>t.id!==localId);
       tickets.push(saved);
       writeCache(localTicketsKey,JSON.stringify(tickets));
     }
-    await loadTickets();view('tickets');feedback('Билет сохранён в приложении. '+(hours.length?'Напоминания активны.':''));
-    $('ticket-form').hidden=true;state.editing=null;
+    await loadTickets();
+    view('tickets');
+    feedback(state.editing?'Изменения билета сохранены.':'Билет сохранён в приложении. '+(hours.length?'Напоминания активны.':''));
+    $('ticket-form').hidden=true;
+    state.editing=null;
   });
 });
 $('manual-toggle').addEventListener('click',()=>{openTicket();state.link=/^https:\/\//i.test($('query').value)?$('query').value.trim():'';});
-$('back-to-search').addEventListener('click',()=>{$('ticket-form').hidden=true;state.editing=null;$('query').focus();$('manual-toggle').setAttribute('aria-expanded','false');});
+$('back-to-search').addEventListener('click',()=>{
+  $('ticket-form').hidden=true;
+  if(state.editing){
+    state.editing=null;
+    view('tickets');
+  }else{
+    $('query').focus();
+    $('manual-toggle').setAttribute('aria-expanded','false');
+  }
+});
 $('session').addEventListener('change',syncOffsets);$('manual-date').addEventListener('change',syncOffsets);
 $('nav-add').addEventListener('click',()=>view('add'));$('add-another').addEventListener('click',()=>{view('add');$('query').focus();});
 function showVenues(){view('venues');void loadVenues();}
@@ -537,34 +595,43 @@ function refreshApiBase(){
 }
 function start(){
   if(hostedOnPages){
-    apiBase=httpsOrigin(readCache(localApiKey));
+    const cachedApi=httpsOrigin(readCache(localApiKey));
+    if(cachedApi&&!cachedApi.includes('trycloudflare.com')&&!cachedApi.includes('ngrok')&&!cachedApi.includes('loca.lt')){
+      apiBase=cachedApi;
+    }else{
+      apiBase='https://213-109-106-175.fatmetal.net';
+      writeCache(localApiKey,apiBase);
+    }
     connectionReady=refreshApiBase().finally(()=>{connectionReady=null;});
   }else if(location.protocol==='http:'||location.protocol==='https:'){
     apiBase=location.origin;
   }
-  function connectToMax(){
+  async function connectToMax(){
     const initData=getInitData();
     if(!initData||initData===launchData)return;
     launchData=initData;
     authorizing=(async()=>{
       try{
+        if(connectionReady)await connectionReady;
         const session=await api('/auth',{initData});
         if(session?.token){
           state.token=session.token;
           writeCache(localTokenKey,session.token);
           $('access').hidden=true;
           $('start-notice').hidden=!session.needsStart;
-          venuesLoading=false;
-          ticketsLoading=false;
-          await Promise.all([loadTickets(), loadVenues()]);
+          return session;
         }
       }catch(error){
         console.warn('MAX authorization bypassed/offline fallback:', error.message);
         $('access').hidden=true;
-        void loadTickets();
-        void loadVenues();
+        return null;
       }
     })().finally(()=>{authorizing=null;});
+
+    await authorizing;
+    venuesLoading=false;
+    ticketsLoading=false;
+    await Promise.allSettled([loadTickets(), loadVenues()]);
   }
   $('max-bridge').addEventListener('load',connectToMax,{once:true});
   connectToMax();
